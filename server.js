@@ -2,31 +2,20 @@ import { fileURLToPath } from "url";
 import path from "path";
 import dotenv from "dotenv";
 
+// Configure dotenv before any other imports
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Load .env only in development
 if (process.env.NODE_ENV !== "production") {
   dotenv.config();
 }
-
-
-//import dotenv from 'dotenv'
-
-//if (process.env.NODE_ENV !== 'production') {
- // const envResult = dotenv.config()
- // if (envResult.error) {
-    //console.warn("⚠️ .env não encontrado no ambiente de desenvolvimento")
-  //}
-//}
 
 // Try to load .env file
 //const envPath = path.resolve(__dirname, ".env");
 //const envResult = dotenv.config({ path: envPath });
 
-if (envResult.error) {
-  console.error("Error loading .env file:", envResult.error);
-  process.exit(1);
+if (result.error) {
+  console.warn("⚠️ .env não encontrado no ambiente de desenvolvimento");
 }
 
 // Double check environment variables
@@ -612,7 +601,3 @@ process.on("SIGTERM", () => {
     process.exit(0);
   });
 });
-
-
-
-
