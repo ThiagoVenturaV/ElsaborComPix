@@ -6,9 +6,13 @@ import dotenv from "dotenv";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+if (process.env.NODE_ENV !== "production") {
+  dotenv.config();
+}
+
 // Try to load .env file
-const envPath = path.resolve(__dirname, ".env");
-const envResult = dotenv.config({ path: envPath });
+//const envPath = path.resolve(__dirname, ".env");
+//const envResult = dotenv.config({ path: envPath });
 
 if (envResult.error) {
   console.error("Error loading .env file:", envResult.error);
