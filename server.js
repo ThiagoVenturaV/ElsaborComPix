@@ -6,12 +6,12 @@ import path from "path";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-import dotenv from 'dotenv'
+//import dotenv from 'dotenv'
 
-if (process.env.NODE_ENV !== 'production') {
-  const envResult = dotenv.config()
-  if (envResult.error) {
-    console.warn("⚠️ .env não encontrado no ambiente de desenvolvimento")
+//if (process.env.NODE_ENV !== 'production') {
+ // const envResult = dotenv.config()
+ // if (envResult.error) {
+    //console.warn("⚠️ .env não encontrado no ambiente de desenvolvimento")
   }
 }
 
@@ -607,4 +607,5 @@ process.on("SIGTERM", () => {
     process.exit(0);
   });
 });
+
 
