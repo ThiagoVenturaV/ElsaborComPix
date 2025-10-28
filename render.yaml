@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: el-sabor-api
+    env: node
+    buildCommand: npm install && npm run build:server
+    startCommand: npm run start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: 18.16.1
+    healthCheckPath: /api/health

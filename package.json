@@ -6,9 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "build:server": "tsc --project tsconfig.server.json",
+    "build:server": "tsc --project tsconfig.server.json && cp package.json dist/ && cp -r data dist/",
     "preview": "vite preview",
-    "start": "cd dist && node -r dotenv/config server.js",
+    "start": "node -r dotenv/config dist/server.js",
     "dev:server": "ts-node-dev --respawn --transpile-only -r dotenv/config server.js"
   },
   "dependencies": {
