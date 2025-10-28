@@ -8,7 +8,7 @@
     "build": "tsc && vite build && npm run build:server",
     "build:server": "tsc --project tsconfig.server.json && cp package.json dist/ && cp -r data dist/",
     "preview": "vite preview",
-   "start": "node dist/server.js",
+    "start": "NODE_ENV=production node dist/server.js",
     "dev:server": "ts-node-dev --respawn --transpile-only -r dotenv/config server.js"
   },
   "dependencies": {
