@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "npm i --save-dev && tsc && vite build && npm run build:server",
+    "build": "tsc && vite build && npm run build:server",
     "build:server": "tsc --project tsconfig.server.json && cp package.json dist/ && cp -r data dist/",
     "preview": "vite preview",
     "start": "NODE_ENV=production node dist/server.js",
