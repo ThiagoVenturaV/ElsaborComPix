@@ -5,10 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "tsc && vite build && npm run build:server",
     "build:server": "tsc --project tsconfig.server.json && cp package.json dist/ && cp -r data dist/",
     "preview": "vite preview",
-    "start": "node -r dotenv/config dist/server.js",
+   "start": "node dist/server.js",
     "dev:server": "ts-node-dev --respawn --transpile-only -r dotenv/config server.js"
   },
   "dependencies": {
