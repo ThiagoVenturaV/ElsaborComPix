@@ -1,12 +1,37 @@
+# render.yaml
+#
+# Configuração de deploy para o Render (APENAS Backend).
+# O frontend está hospedado separadamente na Vercel.
+
 services:
-  - type: web
-    name: el-sabor-api
-    env: node
-    buildCommand: npm install && npm run build:server
-    startCommand: npm run start
+  # ---------------------
+  #  Serviço: Backend (API Node.js/Express)
+  # ---------------------
+  - type: web # Tipo 'Serviço Web'
+    name: elsabor-backend # O nome do seu serviço no Render
+    env: node # Especifica o ambiente Node.js
+    plan: free # Define o plano (pode ser 'starter' se precisar de mais recursos)
+    
+    # Comando de Build:
+    # 1. Instala todas as dependências (npm install)
+    # 2. Compila o TypeScript do servidor (npm run build:server)
+    buildCommand: "npm install && npm run build:server"
+    
+    # Comando de Início:
+    # Executa o servidor Node.js compilado
+    startCommand: "node dist/server.js"
+    
+    # Variáveis de Ambiente:
+    # Você DEVE configurar estas variáveis no Dashboard do Render (em 'Environment').
     envVars:
-      - key: NODE_ENV
-        value: production
-      - key: NODE_VERSION
-        value: 18.16.1
-    healthCheckPath: /api/health
+      # (Obrigatório) Seu token secreto do Mercado Pago
+      - key: MERCADO_PAGO_ACCESS_TOKEN
+        sync: false # 'false' = configure manualmente no dashboard por segurança
+
+      # (MUITO IMPORTANTE) A URL do seu frontend para o CORS
+      # Seu backend precisa saber a URL da Vercel para aceitar requisições dela.
+      - key: CORS_ORIGIN 
+        value: "https://elsabor-restaurante.vercel.app"
+        
+      # NOTA: A variável 'PORT' é definida automaticamente pelo Render.
+      # Seu 'server.js' DEVE usar 'process.env.PORT'.
