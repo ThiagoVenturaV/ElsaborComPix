@@ -6,7 +6,19 @@
     "moduleResolution": "Node",
     "esModuleInterop": true,
     "resolveJsonModule": true
+    "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "dist",
+    "module": "ESNext",
+    "target": "ES2020",
+    "moduleResolution": "Node",
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "allowSyntheticDefaultImports": true,
+    "types": ["node"],
+    "lib": ["ES2020"]
   },
   "include": ["server.js", "services/**/*.ts", "types.ts"],
-  "exclude": ["node_modules"]
+  "exclude": ["dist","node_modules"]
 }
+
