@@ -1,0 +1,50 @@
+[
+  {
+    "id": 1,
+    "name": "Hambúrguer Clássico",
+    "description": "Pão, carne, queijo, alface, tomate e molho especial.",
+    "price": 25.5,
+    "category": "Hambúrgueres",
+    "image": "https://picsum.photos/id/1060/400/300"
+  },
+  {
+    "id": 2,
+    "name": "Hambúrguer Duplo Bacon",
+    "description": "Pão, duas carnes, dobro de bacon, queijo cheddar e barbecue.",
+    "price": 32,
+    "category": "Hambúrgueres",
+    "image": "https://picsum.photos/id/312/400/300"
+  },
+  {
+    "id": 3,
+    "name": "Pizza Margherita",
+    "description": "Molho de tomate, mussarela fresca e manjericão.",
+    "price": 45,
+    "category": "Pizzas",
+    "image": "https://picsum.photos/id/292/400/300"
+  },
+  {
+    "id": 4,
+    "name": "Pizza Calabresa",
+    "description": "Molho de tomate, mussarela, calabresa e cebola.",
+    "price": 48.5,
+    "category": "Pizzas",
+    "image": "https://picsum.photos/id/102/400/300"
+  },
+  {
+    "id": 5,
+    "name": "Batata Frita",
+    "description": "Porção generosa de batatas fritas crocantes.",
+    "price": 15,
+    "category": "Acompanhamentos",
+    "image": "https://picsum.photos/id/1084/400/300"
+  },
+  {
+    "id": 6,
+    "name": "Refrigerante Lata",
+    "description": "Coca-Cola, Guaraná ou Soda.",
+    "price": 6,
+    "category": "Bebidas",
+    "image": "https://picsum.photos/id/119/400/300"
+  }
+]

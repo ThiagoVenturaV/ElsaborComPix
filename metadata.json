@@ -1,0 +1,4 @@
+{
+  "name": "El Sabor - Restaurant Ordering System",
+  "description": "A comprehensive web application for restaurants that allows customers to browse the menu, place orders for delivery or pickup, and pay online. Includes a secret admin dashboard for the kitchen to manage orders and a separate interface for delivery drivers with map integration."
+}

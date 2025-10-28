@@ -1,0 +1,17 @@
+{
+  "items": [
+    {
+      "id": 1,
+      "name": "Hamburguer Classico",
+      "price": 25.5,
+      "quantity": 1
+    }
+  ],
+  "total": 25.5,
+  "user": {
+    "name": "Joao Silva",
+    "phone": "11999999999"
+  },
+  "paymentMethod": "PIX",
+  "deliveryType": "PICKUP"
+}

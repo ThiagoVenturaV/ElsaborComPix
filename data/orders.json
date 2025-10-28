@@ -1,0 +1,439 @@
+[
+  {
+    "id": "ORDER-1761424061830",
+    "createdAt": "2025-10-25T20:27:41.830Z",
+    "status": "COMPLETED",
+    "user": {
+      "phone": "81994824612"
+    },
+    "items": [
+      {
+        "id": 1,
+        "name": "Hambúrguer Clássico",
+        "description": "Pão, carne, queijo, alface, tomate e molho especial.",
+        "price": 25.5,
+        "category": "Hambúrgueres",
+        "image": "https://picsum.photos/id/1060/400/300",
+        "quantity": 1
+      }
+    ],
+    "total": 25.5,
+    "deliveryType": "PICKUP",
+    "paymentMethod": "CASH"
+  },
+  {
+    "id": "ORDER-1761424109829",
+    "createdAt": "2025-10-25T20:28:29.829Z",
+    "status": "OUT_FOR_DELIVERY",
+    "user": {
+      "phone": "81994824612",
+      "address": "rua palmares"
+    },
+    "items": [
+      {
+        "id": 1,
+        "name": "Hambúrguer Clássico",
+        "description": "Pão, carne, queijo, alface, tomate e molho especial.",
+        "price": 25.5,
+        "category": "Hambúrgueres",
+        "image": "https://picsum.photos/id/1060/400/300",
+        "quantity": 1
+      }
+    ],
+    "total": 25.5,
+    "deliveryType": "DELIVERY",
+    "paymentMethod": "CASH"
+  },
+  {
+    "id": "ORDER-1761424523622",
+    "createdAt": "2025-10-25T20:35:23.622Z",
+    "status": "OUT_FOR_DELIVERY",
+    "user": {
+      "name": "134534531511345",
+      "phone": "15451425145",
+      "address": "50791560"
+    },
+    "items": [
+      {
+        "id": 1,
+        "name": "Hambúrguer Clássico",
+        "description": "Pão, carne, queijo, alface, tomate e molho especial.",
+        "price": 25.5,
+        "category": "Hambúrgueres",
+        "image": "https://picsum.photos/id/1060/400/300",
+        "quantity": 1
+      }
+    ],
+    "total": 25.5,
+    "deliveryType": "DELIVERY",
+    "paymentMethod": "CASH"
+  },
+  {
+    "id": "ORDER-1761427613281",
+    "createdAt": "2025-10-25T21:26:53.281Z",
+    "status": "COMPLETED",
+    "user": {
+      "name": "th",
+      "phone": "06976976976"
+    },
+    "items": [
+      {
+        "id": 1,
+        "name": "Hambúrguer Clássico",
+        "description": "Pão, carne, queijo, alface, tomate e molho especial.",
+        "price": 25.5,
+        "category": "Hambúrgueres",
+        "image": "https://picsum.photos/id/1060/400/300",
+        "quantity": 1
+      }
+    ],
+    "total": 25.5,
+    "deliveryType": "PICKUP",
+    "paymentMethod": "CASH"
+  },
+  {
+    "id": "ORDER-1761427781929",
+    "createdAt": "2025-10-25T21:29:41.929Z",
+    "status": "COMPLETED",
+    "user": {
+      "name": "trui",
+      "phone": "98143-r092845-014"
+    },
+    "items": [
+      {
+        "id": 1,
+        "name": "Hambúrguer Clássico",
+        "description": "Pão, carne, queijo, alface, tomate e molho especial.",
+        "price": 25.5,
+        "category": "Hambúrgueres",
+        "image": "https://picsum.photos/id/1060/400/300",
+        "flavors": [
+          "bovino",
+          "frango"
+        ],
+        "quantity": 1,
+        "selectedFlavor": "bovino"
+      }
+    ],
+    "total": 25.5,
+    "deliveryType": "PICKUP",
+    "paymentMethod": "PIX"
+  },
+  {
+    "id": "ORDER-1761427902045",
+    "createdAt": "2025-10-25T21:31:42.045Z",
+    "status": "ACCEPTED",
+    "user": {
+      "name": "6r75789",
+      "phone": "4756846785"
+    },
+    "items": [
+      {
+        "id": 1,
+        "name": "Hambúrguer Clássico",
+        "description": "Pão, carne, queijo, alface, tomate e molho especial.",
+        "price": 25.5,
+        "category": "Hambúrgueres",
+        "image": "https://picsum.photos/id/1060/400/300",
+        "flavors": [
+          "bovino",
+          "frango"
+        ],
+        "quantity": 1,
+        "selectedFlavor": "frango"
+      }
+    ],
+    "total": 25.5,
+    "deliveryType": "PICKUP",
+    "paymentMethod": "CASH"
+  },
+  {
+    "id": "ORDER-1761428051465",
+    "createdAt": "2025-10-25T21:34:11.465Z",
+    "status": "ACCEPTED",
+    "user": {
+      "name": "6tt",
+      "phone": "54758678899"
+    },
+    "items": [
+      {
+        "id": 1,
+        "name": "Hambúrguer Clássico",
+        "description": "Pão, carne, queijo, alface, tomate e molho especial.",
+        "price": 25.5,
+        "category": "Hambúrgueres",
+        "image": "https://picsum.photos/id/1060/400/300",
+        "flavors": [
+          "bovino",
+          "frango"
+        ],
+        "quantity": 1,
+        "selectedFlavor": "bovino"
+      }
+    ],
+    "total": 25.5,
+    "deliveryType": "PICKUP",
+    "paymentMethod": "CASH"
+  },
+  {
+    "id": "ORDER-1761428751424",
+    "createdAt": "2025-10-25T21:45:51.424Z",
+    "status": "ACCEPTED",
+    "user": {
+      "name": "thiago",
+      "phone": "81994824612"
+    },
+    "items": [
+      {
+        "id": 1,
+        "name": "Galinha Guisada",
+        "description": "Feijão,Arroz,Macarrão,purê,vinagrete",
+        "price": 13,
+        "category": "Hambúrgueres",
+        "image": "https://encrypted-tbn1.gstatic.com/images?q=tbn:ANd9GcR2zyVujIVyCVB1zzErADDptiBmsySdmSmlmxCUwBynUd8cZFfY",
+        "flavors": [
+          "feijao preto",
+          "feijao mulato",
+          "feijao macassar"
+        ],
+        "quantity": 1,
+        "selectedFlavor": "feijao preto"
+      }
+    ],
+    "total": 13,
+    "deliveryType": "PICKUP",
+    "paymentMethod": "PIX"
+  },
+  {
+    "id": "ORDER-1761436422661",
+    "createdAt": "2025-10-25T23:53:42.661Z",
+    "status": "PENDING",
+    "user": {
+      "name": "tytyfhg",
+      "phone": "8739017349083243"
+    },
+    "items": [
+      {
+        "id": 1,
+        "name": "Galinha Guisada",
+        "description": "Feijão,Arroz,Macarrão,purê,vinagrete",
+        "price": 13,
+        "category": "Hambúrgueres",
+        "image": "https://encrypted-tbn1.gstatic.com/images?q=tbn:ANd9GcR2zyVujIVyCVB1zzErADDptiBmsySdmSmlmxCUwBynUd8cZFfY",
+        "flavors": [
+          "feijao preto",
+          "feijao mulato",
+          "feijao macassar"
+        ],
+        "quantity": 1,
+        "selectedFlavor": "feijao preto"
+      }
+    ],
+    "total": 13,
+    "deliveryType": "PICKUP",
+    "paymentMethod": "PIX"
+  },
+  {
+    "id": "ORDER-1761605751203",
+    "createdAt": "2025-10-27T22:55:51.203Z",
+    "status": "PENDING",
+    "user": {
+      "name": "thiago ventura",
+      "phone": "81994824612"
+    },
+    "items": [
+      {
+        "id": 1,
+        "name": "Galinha Guisada",
+        "description": "Feijão,Arroz,Macarrão,purê,vinagrete",
+        "price": 13,
+        "category": "Hambúrgueres",
+        "image": "https://encrypted-tbn1.gstatic.com/images?q=tbn:ANd9GcR2zyVujIVyCVB1zzErADDptiBmsySdmSmlmxCUwBynUd8cZFfY",
+        "flavors": [
+          "feijao preto",
+          "feijao mulato",
+          "feijao macassar"
+        ],
+        "quantity": 1,
+        "selectedFlavor": "feijao preto"
+      }
+    ],
+    "total": 13,
+    "deliveryType": "PICKUP",
+    "paymentMethod": "PIX"
+  },
+  {
+    "id": "ORDER-1761606541406",
+    "createdAt": "2025-10-27T23:09:01.406Z",
+    "status": "PENDING",
+    "user": {
+      "name": "th",
+      "phone": "qruywerufghewf"
+    },
+    "items": [
+      {
+        "id": 1,
+        "name": "Galinha Guisada",
+        "description": "Feijão,Arroz,Macarrão,purê,vinagrete",
+        "price": 13,
+        "category": "Hambúrgueres",
+        "image": "https://encrypted-tbn1.gstatic.com/images?q=tbn:ANd9GcR2zyVujIVyCVB1zzErADDptiBmsySdmSmlmxCUwBynUd8cZFfY",
+        "flavors": [
+          "feijao preto",
+          "feijao mulato",
+          "feijao macassar"
+        ],
+        "quantity": 2,
+        "selectedFlavor": "feijao preto"
+      }
+    ],
+    "total": 26,
+    "deliveryType": "PICKUP",
+    "paymentMethod": "CASH"
+  },
+  {
+    "id": "ORDER-1761607298365",
+    "createdAt": "2025-10-27T23:21:38.365Z",
+    "status": "PENDING",
+    "user": {
+      "name": "th",
+      "phone": "81994824612"
+    },
+    "items": [
+      {
+        "id": 1,
+        "name": "Galinha Guisada",
+        "description": "Feijão,Arroz,Macarrão,purê,vinagrete",
+        "price": 13,
+        "category": "Hambúrgueres",
+        "image": "https://encrypted-tbn1.gstatic.com/images?q=tbn:ANd9GcR2zyVujIVyCVB1zzErADDptiBmsySdmSmlmxCUwBynUd8cZFfY",
+        "flavors": [
+          "feijao preto",
+          "feijao mulato",
+          "feijao macassar"
+        ],
+        "quantity": 1,
+        "selectedFlavor": "feijao preto"
+      }
+    ],
+    "total": 13,
+    "deliveryType": "PICKUP",
+    "paymentMethod": "PIX"
+  },
+  {
+    "id": "ORDER-1761607757639",
+    "createdAt": "2025-10-27T23:29:17.639Z",
+    "status": "PENDING",
+    "user": {
+      "name": "rthtt",
+      "phone": "454514531453"
+    },
+    "items": [
+      {
+        "id": 1,
+        "name": "Galinha Guisada",
+        "description": "Feijão,Arroz,Macarrão,purê,vinagrete",
+        "price": 13,
+        "category": "Hambúrgueres",
+        "image": "https://encrypted-tbn1.gstatic.com/images?q=tbn:ANd9GcR2zyVujIVyCVB1zzErADDptiBmsySdmSmlmxCUwBynUd8cZFfY",
+        "flavors": [
+          "feijao preto",
+          "feijao mulato",
+          "feijao macassar"
+        ],
+        "quantity": 1,
+        "selectedFlavor": "feijao preto"
+      }
+    ],
+    "total": 13,
+    "deliveryType": "PICKUP",
+    "paymentMethod": "PIX"
+  },
+  {
+    "id": "ORDER-1761607797375",
+    "createdAt": "2025-10-27T23:29:57.375Z",
+    "status": "PENDING",
+    "user": {
+      "name": "rtergh",
+      "phone": "543534534534"
+    },
+    "items": [
+      {
+        "id": 1,
+        "name": "Galinha Guisada",
+        "description": "Feijão,Arroz,Macarrão,purê,vinagrete",
+        "price": 13,
+        "category": "Hambúrgueres",
+        "image": "https://encrypted-tbn1.gstatic.com/images?q=tbn:ANd9GcR2zyVujIVyCVB1zzErADDptiBmsySdmSmlmxCUwBynUd8cZFfY",
+        "flavors": [
+          "feijao preto",
+          "feijao mulato",
+          "feijao macassar"
+        ],
+        "quantity": 1,
+        "selectedFlavor": "feijao preto"
+      }
+    ],
+    "total": 13,
+    "deliveryType": "PICKUP",
+    "paymentMethod": "PIX"
+  },
+  {
+    "id": "ORDER-1761608135526",
+    "createdAt": "2025-10-27T23:35:35.526Z",
+    "status": "PENDING",
+    "user": {
+      "name": "teyth",
+      "phone": "66765767653"
+    },
+    "items": [
+      {
+        "id": 1,
+        "name": "Galinha Guisada",
+        "description": "Feijão,Arroz,Macarrão,purê,vinagrete",
+        "price": 13,
+        "category": "Hambúrgueres",
+        "image": "https://encrypted-tbn1.gstatic.com/images?q=tbn:ANd9GcR2zyVujIVyCVB1zzErADDptiBmsySdmSmlmxCUwBynUd8cZFfY",
+        "flavors": [
+          "feijao preto",
+          "feijao mulato",
+          "feijao macassar"
+        ],
+        "quantity": 1,
+        "selectedFlavor": "feijao preto"
+      }
+    ],
+    "total": 13,
+    "deliveryType": "PICKUP",
+    "paymentMethod": "PIX"
+  },
+  {
+    "id": "ORDER-1761609069037",
+    "createdAt": "2025-10-27T23:51:09.037Z",
+    "status": "PENDING",
+    "user": {
+      "name": "thrt",
+      "phone": "565656356356"
+    },
+    "items": [
+      {
+        "id": 1,
+        "name": "Galinha Guisada",
+        "description": "Feijão,Arroz,Macarrão,purê,vinagrete",
+        "price": 13,
+        "category": "Hambúrgueres",
+        "image": "https://encrypted-tbn1.gstatic.com/images?q=tbn:ANd9GcR2zyVujIVyCVB1zzErADDptiBmsySdmSmlmxCUwBynUd8cZFfY",
+        "flavors": [
+          "feijao preto",
+          "feijao mulato",
+          "feijao macassar"
+        ],
+        "quantity": 1,
+        "selectedFlavor": "feijao macassar"
+      }
+    ],
+    "total": 13,
+    "deliveryType": "PICKUP",
+    "paymentMethod": "PIX"
+  }
+]

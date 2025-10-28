@@ -1,0 +1,29 @@
+# Configurações do ambiente para El Sabor
+
+# Backend Configuration
+BACKEND_PORT=3001
+BACKEND_HOST=localhost
+API_BASE_URL=http://localhost:3001/api
+
+# Frontend Configuration
+FRONTEND_PORT=5173
+FRONTEND_HOST=localhost
+
+# Database Configuration (para futuras implementações)
+# DB_HOST=localhost
+# DB_PORT=5432
+# DB_NAME=el_sabor
+# DB_USER=postgres
+# DB_PASSWORD=password
+
+# JWT Configuration (para futuras implementações)
+# JWT_SECRET=your-secret-key
+# JWT_EXPIRES_IN=24h
+
+# File Upload Configuration
+# MAX_FILE_SIZE=5MB
+# UPLOAD_PATH=./uploads
+
+# Logging Configuration
+# LOG_LEVEL=info
+# LOG_FILE=./logs/app.log
