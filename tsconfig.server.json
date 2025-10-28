@@ -17,8 +17,15 @@
     "allowSyntheticDefaultImports": true,
     "types": ["node"],
     "lib": ["ES2020"]
+      "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "dist"
+ 
+ 
   },
+       "include": ["server"]
   "include": ["server.js", "services/**/*.ts", "types.ts"],
   "exclude": ["dist","node_modules"]
 }
+
 
