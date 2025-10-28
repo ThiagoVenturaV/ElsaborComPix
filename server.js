@@ -12,8 +12,8 @@ const __dirname = path.dirname(__filename);
  // const envResult = dotenv.config()
  // if (envResult.error) {
     //console.warn("⚠️ .env não encontrado no ambiente de desenvolvimento")
-  }
-}
+  //}
+//}
 
 // Try to load .env file
 //const envPath = path.resolve(__dirname, ".env");
@@ -607,5 +607,6 @@ process.on("SIGTERM", () => {
     process.exit(0);
   });
 });
+
 
 
