@@ -577,13 +577,7 @@ app.use((err, req, res, next) => {
 });
 
 // Start server with error handling
-const cors = require('cors');
 
-const corsOptions = {
-  origin: process.env.CORS_ORIGIN || 'https://elsabor-restaurante.vercel.app/' // URL da Vercel
-};
-
-app.use(cors(corsOptions));
 const server = app
   .listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
@@ -608,4 +602,5 @@ process.on("SIGTERM", () => {
     process.exit(0);
   });
 });
+
 
