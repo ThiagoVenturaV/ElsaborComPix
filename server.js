@@ -1,10 +1,15 @@
 import { fileURLToPath } from "url";
 import path from "path";
-//import dotenv from "dotenv";
+import dotenv from "dotenv";
 
-// Configure dotenv before any other imports
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Load .env only in development
+if (process.env.NODE_ENV !== "production") {
+  dotenv.config();
+}
+
 
 //import dotenv from 'dotenv'
 
@@ -607,6 +612,7 @@ process.on("SIGTERM", () => {
     process.exit(0);
   });
 });
+
 
 
 
