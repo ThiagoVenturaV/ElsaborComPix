@@ -9,6 +9,10 @@
     "resolveJsonModule": true,
     "types": ["node"]
   },
-  "include": ["server", "services/**/*.ts", "types.ts"],
+  "include": [
+    "server",
+    "services/**/*.ts",
+    "types.ts"
+  ],
   "exclude": ["node_modules"]
 }
