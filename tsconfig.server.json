@@ -1,31 +1,14 @@
 {
+  "extends": "./tsconfig.json",
   "compilerOptions": {
     "outDir": "dist",
-    "module": "ESNext",
-    "target": "ES2020",
-    "moduleResolution": "Node",
-    "esModuleInterop": true,
-    "resolveJsonModule": true
-    "compilerOptions": {
-    "rootDir": ".",
-    "outDir": "dist",
-    "module": "ESNext",
+    "module": "CommonJS",
     "target": "ES2020",
     "moduleResolution": "Node",
     "esModuleInterop": true,
     "resolveJsonModule": true,
-    "allowSyntheticDefaultImports": true,
-    "types": ["node"],
-    "lib": ["ES2020"]
-      "extends": "./tsconfig.json",
-  "compilerOptions": {
-    "outDir": "dist"
- 
- 
+    "types": ["node"]
   },
-       "include": ["server"]
-  "include": ["server.js", "services/**/*.ts", "types.ts"],
-  "exclude": ["dist","node_modules"]
+  "include": ["server", "services/**/*.ts", "types.ts"],
+  "exclude": ["node_modules"]
 }
-
-
