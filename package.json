@@ -12,11 +12,11 @@
     "dev:server": "ts-node-dev --respawn --transpile-only -r dotenv/config server.js"
   },
   "dependencies": {
-    "axios": "^1.12.2",
+    "axios": "^1.13.1",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
-    "mercadopago": "^2.0.4",
+    "mercadopago": "^2.9.0",
     "pix-client": "^1.0.5",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
@@ -24,10 +24,9 @@
     "react-to-print": "^3.2.0"
   },
   "devDependencies": {
-     "@types/node": "^22.0.0",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.4",
-    "@types/node": "^22.14.0",
+    "@types/node": "^22.18.13",
     "@vitejs/plugin-react": "^5.0.0",
     "ts-node-dev": "^2.0.0",
     "typescript": "~5.8.2",
