@@ -24,9 +24,9 @@
     "react-to-print": "^3.2.0"
   },
   "devDependencies": {
+     "@types/node": "^22.0.0",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.4",
-    "@types/node": "^22.0.0",
     "@vitejs/plugin-react": "^5.0.0",
     "ts-node-dev": "^2.0.0",
     "typescript": "~5.8.2",
