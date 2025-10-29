@@ -1,6 +1,5 @@
 {
    "types": ["node"]
-    "types": ["node"]
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "outDir": "dist",
@@ -18,4 +17,5 @@
   ],
   "exclude": ["node_modules"]
 }
+
 
