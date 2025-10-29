@@ -1,13 +1,12 @@
 {
   "compilerOptions": {
-     "types": ["node"],
+     "types": ['node'],
     "outDir": "dist",
     "module": "CommonJS",
     "target": "ES2020",
     "moduleResolution": "Node",
     "esModuleInterop": true,
     "resolveJsonModule": true,
-  "extends": "./tsconfig.json",
   },
   "include": [
     "server",
@@ -16,6 +15,7 @@
   ],
   "exclude": ["node_modules"]
 }
+
 
 
 
