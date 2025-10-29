@@ -1,4 +1,6 @@
 {
+   "types": ["node"]
+    "types": ["node"]
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "outDir": "dist",
@@ -7,7 +9,7 @@
     "moduleResolution": "Node",
     "esModuleInterop": true,
     "resolveJsonModule": true,
-    "types": ["node"]
+   
   },
   "include": [
     "server",
@@ -16,3 +18,4 @@
   ],
   "exclude": ["node_modules"]
 }
+
