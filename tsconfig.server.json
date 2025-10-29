@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "types": ["node"]
     "outDir": "dist",
     "module": "CommonJS",
     "target": "ES2020",
@@ -14,6 +15,7 @@
   ],
   "exclude": ["node_modules"]
 }
+
 
 
 
