@@ -24,7 +24,7 @@
     "react-to-print": "^3.2.0"
   },
   "devDependencies": {
-  "@types/node": "^22.0.0"
+  "@types/node": "^22.0.0",
 }
   "devDependencies": {
     "@types/cors": "^2.8.19",
