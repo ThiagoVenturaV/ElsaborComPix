@@ -1,6 +1,6 @@
 import { Order, OrderStatus, MenuItem } from "../types";
 
-const API_BASE_URL = "https://elsaborcompix.onrender.com/api";
+export const API_BASE_URL = import.meta.env.VITE_API_URL || "https://elsaborcompix.onrender.com/api";
 
 // Helper function to handle API responses
 const handleApiResponse = async (response: Response) => {

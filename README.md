@@ -86,15 +86,17 @@ npm run dev
 
 O Vite normalmente roda em `http://localhost:5173`.
 
-4. Testar o fluxo de pagamento PIX
+4. Testar o fluxo de pagamento PIX e Integrações Realizadas
 
-- No checkout do frontend, escolha PIX como forma de pagamento e gere o QR code.
-- Escaneie o QR com o app do banco ou copie o código PIX e cole no app do banco.
-- O backend possui um endpoint para checar status do pagamento:
+- No checkout do frontend, escolha PIX como forma de pagamento e finalize o pedido.
+- O sistema gerará o QR Code e o código Pix Copia e Cola, travando os campos para evitar re-submissões duplicadas.
+- **Polling Automático:** O frontend consulta automaticamente o backend a cada 5 segundos para verificar o status de aprovação do Pix. Caso aprovado, o carrinho é limpo e o usuário é redirecionado para a página de confirmação.
+- **Webhook de Produção:** O backend possui a rota `POST /api/payments/webhook` configurada para receber notificações de pagamento do Mercado Pago em tempo real e atualizar a ordem para `ACCEPTED` mesmo se o cliente fechar a página.
+- **Verificação Manual:** Há também um link para verificação manual no checkout e o endpoint de consulta no backend:
 
-  GET `http://localhost:3001/api/payments/status/:paymentId`
+  GET `http://localhost:3001/api/payments/:paymentId/status`
 
-  Esse endpoint consulta a API do Mercado Pago e retorna um JSON com `status`, `status_detail` e `paid`.
+  Esse endpoint consulta a API do Mercado Pago e retorna um JSON com `status`, `statusDetail` e `paid`.
 
 Observação sobre sandbox: para testes sem movimentação real, use o modo sandbox/ambiente de testes do Mercado Pago (consulte a documentação do Mercado Pago para credenciais de teste e comportamento do PIX em sandbox).
 
@@ -143,7 +145,8 @@ Observação de segurança: nunca exponha `MERCADO_PAGO_ACCESS_TOKEN` no fronten
 
 1. Acesse o frontend hospedado (Vercel) e crie um pedido pelo fluxo normal.
 2. Gere o QR PIX, escaneie e confirme o pagamento (em sandbox use as credenciais de teste do Mercado Pago).
-3. Consulte o endpoint `GET /api/payments/status/:paymentId` para verificar se o provider declarou o pagamento como `approved`.
+3. O checkout deve mudar para a tela de confirmação automaticamente graças ao polling integrado.
+4. Caso queira inspecionar manualmente, consulte o endpoint `GET /api/payments/:paymentId/status` para verificar se o status foi atualizado para `approved`.
 
 ---
 

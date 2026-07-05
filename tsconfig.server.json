@@ -2,15 +2,15 @@
   "compilerOptions": {
     "types": ["node"],
     "outDir": "dist",
-    "module": "CommonJS",
+    "module": "ESNext",
     "target": "ES2020",
     "moduleResolution": "Node",
     "esModuleInterop": true,
     "resolveJsonModule": true,
   },
   "include": [
-    "server",
-    "services/**/*.ts",
+    "services/orders.ts",
+    "services/payment.ts",
     "types.ts"
   ],
   "exclude": ["node_modules"]

@@ -6,15 +6,14 @@ import dotenv from "dotenv";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const envPath = path.resolve(__dirname, ".env");
+let result = {};
+
 if (process.env.NODE_ENV !== "production") {
-  dotenv.config();
+  result = dotenv.config({ path: envPath });
 }
 
-// Try to load .env file
-//const envPath = path.resolve(__dirname, ".env");
-//const envResult = dotenv.config({ path: envPath });
-
-if (result.error) {
+if (result.error && process.env.NODE_ENV !== "production") {
   console.warn("⚠️ .env não encontrado no ambiente de desenvolvimento");
 }
 
@@ -485,6 +484,7 @@ app.post("/api/payments/pix", async (req, res) => {
           transaction_amount: Number(order.total.toFixed(2)),
           description: `Pedido #${order.id}`,
           payment_method_id: "pix",
+          external_reference: order.id,
           payer: {
             email: `cliente.${order.id}@email.com`,
             first_name: order.customer.name.split(" ")[0] || "Cliente",
@@ -560,6 +560,59 @@ app.get("/api/payments/:transactionId/status", async (req, res) => {
   } catch (error) {
     console.error("Error checking payment status:", error);
     res.status(500).json({ error: "Failed to check payment status" });
+  }
+});
+
+// Webhook for Mercado Pago payment notifications
+app.post("/api/payments/webhook", async (req, res) => {
+  console.log("Received webhook notification:", JSON.stringify(req.body, null, 2));
+
+  const paymentId = req.body.data?.id || req.body.id || req.query.id;
+  const topic = req.body.type || req.body.topic || req.query.topic;
+
+  if (!paymentId || (topic && topic !== "payment" && topic !== "payment.created" && topic !== "payment.updated")) {
+    return res.status(200).send("OK (ignored non-payment or empty topic)");
+  }
+
+  try {
+    console.log(`Fetching payment status for ID: ${paymentId}`);
+    let paymentInfo;
+    try {
+      if (payment && typeof payment.get === "function") {
+        paymentInfo = await payment.get({ id: paymentId });
+        paymentInfo = paymentInfo?.response || paymentInfo;
+      } else {
+        paymentInfo = await getPaymentDirect(paymentId);
+      }
+    } catch (getErr) {
+      console.error(`Failed to fetch payment info for ${paymentId} from Mercado Pago:`, getErr.message);
+      return res.status(200).send("OK (could not verify, but acknowledged webhook)");
+    }
+
+    console.log(`Payment info status: ${paymentInfo?.status}, external_reference: ${paymentInfo?.external_reference}`);
+
+    const externalRef = paymentInfo?.external_reference;
+    if (externalRef && paymentInfo?.status === "approved") {
+      const orders = readOrders();
+      const orderIndex = orders.findIndex((o) => o.id === externalRef);
+
+      if (orderIndex !== -1) {
+        if (orders[orderIndex].status === "PENDING") {
+          orders[orderIndex].status = "ACCEPTED";
+          writeOrders(orders);
+          console.log(`Order ${externalRef} successfully approved via Webhook.`);
+        } else {
+          console.log(`Order ${externalRef} is already in status: ${orders[orderIndex].status}`);
+        }
+      } else {
+        console.warn(`Order with external_reference ${externalRef} not found in database.`);
+      }
+    }
+
+    res.status(200).send("OK");
+  } catch (error) {
+    console.error("Error processing webhook:", error);
+    res.status(500).json({ error: "Internal processing error" });
   }
 });
 

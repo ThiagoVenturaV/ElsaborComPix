@@ -38,18 +38,21 @@ const MenuPage: React.FC = () => {
             Carregando cardápio...
           </div>
         ) : (
-          Object.entries(groupedMenu).map(([category, items]) => (
-            <section key={category} className="mb-12">
-              <h2 className="text-3xl font-bold text-gray-800 mb-6 border-b-2 border-orange-500 pb-2">
-                {category}
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {items.map((item) => (
-                  <MenuItemCard key={item.id} item={item} />
-                ))}
-              </div>
-            </section>
-          ))
+          Object.entries(groupedMenu).map(([category, items]) => {
+            const menuItems = items as MenuItem[];
+            return (
+              <section key={category} className="mb-12">
+                <h2 className="text-3xl font-bold text-gray-800 mb-6 border-b-2 border-orange-500 pb-2">
+                  {category}
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                  {menuItems.map((item) => (
+                    <MenuItemCard key={item.id} item={item} />
+                  ))}
+                </div>
+              </section>
+            );
+          })
         )}
       </main>
       <FloatingCartButton />

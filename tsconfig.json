@@ -18,5 +18,16 @@
     "noEmit": true,
 
   },
-  "include": ["src"]
+  "include": [
+    "src",
+    "App.tsx",
+    "index.tsx",
+    "components/**/*",
+    "pages/**/*",
+    "context/**/*",
+    "services/**/*",
+    "utils/**/*",
+    "types.ts",
+    "constants.ts"
+  ]
 }

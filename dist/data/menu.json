@@ -1,11 +1,16 @@
 [
   {
     "id": 1,
-    "name": "Hambúrguer Clássico",
-    "description": "Pão, carne, queijo, alface, tomate e molho especial.",
-    "price": 25.5,
+    "name": "Galinha Guisada",
+    "description": "Feijão,Arroz,Macarrão,purê,vinagrete",
+    "price": 13,
     "category": "Hambúrgueres",
-    "image": "https://picsum.photos/id/1060/400/300"
+    "image": "https://encrypted-tbn1.gstatic.com/images?q=tbn:ANd9GcR2zyVujIVyCVB1zzErADDptiBmsySdmSmlmxCUwBynUd8cZFfY",
+    "flavors": [
+      "feijao preto",
+      "feijao mulato",
+      "feijao macassar"
+    ]
   },
   {
     "id": 2,

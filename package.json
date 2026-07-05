@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build && npm run build:server",
-    "build:server": "tsc --project tsconfig.server.json && cp package.json dist/ && cp -r data dist/",
+    "build:server": "tsc --project tsconfig.server.json && node -e \"const fs = require('fs'); fs.copyFileSync('package.json', 'dist/package.json'); fs.copyFileSync('server.js', 'dist/server.js'); if(!fs.existsSync('dist/data')){ fs.mkdirSync('dist/data'); } fs.readdirSync('data').forEach(f => fs.copyFileSync('data/' + f, 'dist/data/' + f));\"",
     "preview": "vite preview",
     "start": "NODE_ENV=production node dist/server.js",
     "dev:server": "ts-node-dev --respawn --transpile-only -r dotenv/config server.js"

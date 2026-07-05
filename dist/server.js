@@ -6,42 +6,48 @@ import dotenv from "dotenv";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const envPath = path.resolve(__dirname, ".env");
+let result = {};
+
 if (process.env.NODE_ENV !== "production") {
-  dotenv.config();
+  result = dotenv.config({ path: envPath });
 }
 
-// Try to load .env file
-//const envPath = path.resolve(__dirname, ".env");
-//const envResult = dotenv.config({ path: envPath });
-
-if (result.error) {
+if (result.error && process.env.NODE_ENV !== "production") {
   console.warn("⚠️ .env não encontrado no ambiente de desenvolvimento");
 }
+
 // Double check environment variables
 if (!process.env.MERCADO_PAGO_ACCESS_TOKEN) {
   console.error("MERCADO_PAGO_ACCESS_TOKEN is not set in environment");
   process.exit(1);
 }
+
 // Log loaded configuration
 console.log("Configuration loaded:", {
   envPath,
   port: process.env.PORT || 3001,
   mpTokenPrefix: process.env.MERCADO_PAGO_ACCESS_TOKEN.substring(0, 10) + "...",
 });
+
 import express from "express";
 import cors from "cors";
 import fs from "fs";
 import * as mercadopagoPkg from "mercadopago";
 import axios from "axios";
 import { createOrderOnMP, getOrderOnMP } from "./services/orders.js";
+
 const app = express();
 const PORT = process.env.PORT || process.env.SERVER_PORT || 3001;
+
 // Middleware
 app.use(cors());
 app.use(express.json());
+
 // Data storage files
 const MENU_FILE = path.join(__dirname, "data", "menu.json");
 const ORDERS_FILE = path.join(__dirname, "data", "orders.json");
+
 // Ensure data directory exists (use recursive to be safe)
 const dataDir = path.join(__dirname, "data");
 try {
@@ -53,6 +59,7 @@ try {
   // If we can't ensure the data directory exists, exit early to avoid corrupt state
   process.exit(1);
 }
+
 // Initialize data files if they don't exist
 const initializeDataFiles = () => {
   if (!fs.existsSync(MENU_FILE)) {
@@ -109,10 +116,12 @@ const initializeDataFiles = () => {
     ];
     fs.writeFileSync(MENU_FILE, JSON.stringify(initialMenu, null, 2), "utf8");
   }
+
   if (!fs.existsSync(ORDERS_FILE)) {
     fs.writeFileSync(ORDERS_FILE, JSON.stringify([], null, 2), "utf8");
   }
 };
+
 // Helper functions
 const readMenu = () => {
   try {
@@ -123,6 +132,7 @@ const readMenu = () => {
     return [];
   }
 };
+
 const writeMenu = (menu) => {
   try {
     fs.writeFileSync(MENU_FILE, JSON.stringify(menu, null, 2), "utf8");
@@ -132,6 +142,7 @@ const writeMenu = (menu) => {
     return false;
   }
 };
+
 const readOrders = () => {
   try {
     const data = fs.readFileSync(ORDERS_FILE, "utf8");
@@ -141,6 +152,7 @@ const readOrders = () => {
     return [];
   }
 };
+
 const writeOrders = (orders) => {
   try {
     fs.writeFileSync(ORDERS_FILE, JSON.stringify(orders, null, 2), "utf8");
@@ -150,12 +162,15 @@ const writeOrders = (orders) => {
     return false;
   }
 };
+
 // Routes
+
 // Menu routes
 app.get("/api/menu", (req, res) => {
   const menu = readMenu();
   res.json(menu);
 });
+
 app.post("/api/menu", (req, res) => {
   const menu = readMenu();
   // Basic validation: require a name and price
@@ -166,54 +181,67 @@ app.post("/api/menu", (req, res) => {
         'Invalid menu item. "name" (string) and "price" (number) are required.',
     });
   }
+
   // Normalize existing ids to numbers and compute next id safely
   const existingIds = menu
     .map((item) => Number(item.id))
     .filter((n) => Number.isFinite(n));
   const nextId = existingIds.length ? Math.max(...existingIds) + 1 : 1;
+
   const newItem = {
     id: nextId,
     ...req.body,
   };
+
   menu.push(newItem);
+
   if (writeMenu(menu)) {
     res.status(201).json(newItem);
   } else {
     res.status(500).json({ error: "Failed to save menu item" });
   }
 });
+
 app.put("/api/menu/:id", (req, res) => {
   const menu = readMenu();
   const itemId = parseInt(req.params.id);
   const itemIndex = menu.findIndex((item) => item.id === itemId);
+
   if (itemIndex === -1) {
     return res.status(404).json({ error: "Menu item not found" });
   }
+
   menu[itemIndex] = { ...menu[itemIndex], ...req.body };
+
   if (writeMenu(menu)) {
     res.json(menu[itemIndex]);
   } else {
     res.status(500).json({ error: "Failed to update menu item" });
   }
 });
+
 app.delete("/api/menu/:id", (req, res) => {
   const menu = readMenu();
   const itemId = parseInt(req.params.id);
   const filteredMenu = menu.filter((item) => item.id !== itemId);
+
   if (filteredMenu.length === menu.length) {
     return res.status(404).json({ error: "Menu item not found" });
   }
+
   if (writeMenu(filteredMenu)) {
     res.status(204).send();
   } else {
     res.status(500).json({ error: "Failed to delete menu item" });
   }
 });
+
 // Orders routes
 app.get("/api/orders", (req, res) => {
   const orders = readOrders();
   res.json(orders);
 });
+
 app.post("/api/orders", (req, res) => {
   const orders = readOrders();
   // Basic validation for orders: require items array and total
@@ -224,42 +252,52 @@ app.post("/api/orders", (req, res) => {
         'Invalid order. "items" (array) and "total" (number) are required.',
     });
   }
+
   const newOrder = {
     id: `ORDER-${Date.now()}`,
     createdAt: new Date().toISOString(),
     status: "PENDING",
     ...req.body,
   };
+
   orders.push(newOrder);
+
   if (writeOrders(orders)) {
     res.status(201).json(newOrder);
   } else {
     res.status(500).json({ error: "Failed to save order" });
   }
 });
+
 app.put("/api/orders/:id/status", (req, res) => {
   const orders = readOrders();
   const orderId = req.params.id;
   const orderIndex = orders.findIndex((order) => order.id === orderId);
+
   if (orderIndex === -1) {
     return res.status(404).json({ error: "Order not found" });
   }
+
   orders[orderIndex].status = req.body.status;
+
   if (writeOrders(orders)) {
     res.json(orders[orderIndex]);
   } else {
     res.status(500).json({ error: "Failed to update order status" });
   }
 });
+
 // Health check
 app.get("/api/health", (req, res) => {
   res.json({ status: "OK", timestamp: new Date().toISOString() });
 });
+
 // Configure MercadoPago
 console.log(
   "Initializing Mercado Pago with token:",
   process.env.MERCADO_PAGO_ACCESS_TOKEN?.substring(0, 10) + "..."
 );
+
 // Initialize Mercado Pago client with runtime detection to support several SDK shapes
 let mp;
 if (typeof mercadopagoPkg.MercadoPago === "function") {
@@ -288,8 +326,10 @@ if (typeof mercadopagoPkg.MercadoPago === "function") {
     "Unsupported mercadopago SDK shape - cannot initialize client"
   );
 }
+
 // Payment helper reference
 const payment = mp.payment;
+
 // Fallback: direct REST call to Mercado Pago if SDK shape doesn't expose payment.create
 const createPaymentDirect = async (payload) => {
   const token = process.env.MERCADO_PAGO_ACCESS_TOKEN || "";
@@ -298,9 +338,11 @@ const createPaymentDirect = async (payload) => {
     Authorization: `Bearer ${token}`,
     "Content-Type": "application/json",
   };
+
   const response = await axios.post(url, payload, { headers });
   return response.data;
 };
+
 const getPaymentDirect = async (transactionId) => {
   const token = process.env.MERCADO_PAGO_ACCESS_TOKEN || "";
   const url = `https://api.mercadopago.com/v1/payments/${transactionId}`;
@@ -308,6 +350,7 @@ const getPaymentDirect = async (transactionId) => {
   const response = await axios.get(url, { headers });
   return response.data;
 };
+
 // Test Mercado Pago configuration
 const testMercadoPago = async () => {
   try {
@@ -333,6 +376,7 @@ const testMercadoPago = async () => {
       "Using token:",
       process.env.MERCADO_PAGO_ACCESS_TOKEN?.substring(0, 15) + "..."
     );
+
     let testPayment;
     try {
       if (payment && typeof payment.create === "function") {
@@ -387,26 +431,33 @@ const testMercadoPago = async () => {
     return false;
   }
 };
+
 // Run test when server starts
 testMercadoPago();
+
 // Payment routes
 app.post("/api/payments/pix", async (req, res) => {
   const { orderId, customerName, customerPhone } = req.body;
+
   if (!orderId || !customerName || !customerPhone) {
     return res
       .status(400)
       .json({ error: "Order ID, customer name and phone are required" });
   }
+
   const orders = readOrders();
   const order = orders.find((o) => o.id === orderId);
+
   if (!order) {
     return res.status(404).json({ error: "Order not found" });
   }
+
   // Update order with customer info
   order.customer = {
     name: customerName,
     phone: customerPhone,
   };
+
   try {
     // 1. Create order on Mercado Pago first
     console.log("Creating Mercado Pago order...", {
@@ -414,8 +465,10 @@ app.post("/api/payments/pix", async (req, res) => {
       total: order.total,
       items: order.items.length,
     });
+
     const mpOrder = await createOrderOnMP(order);
     console.log("Mercado Pago order created:", mpOrder);
+
     // 2. Create PIX payment linked to the order
     console.log("Creating PIX payment for order:", {
       orderId: order.id,
@@ -423,6 +476,7 @@ app.post("/api/payments/pix", async (req, res) => {
       userName: order.user.name,
       mpOrderId: mpOrder.id,
     });
+
     const result = await axios
       .post(
         "https://api.mercadopago.com/v1/payments",
@@ -430,6 +484,7 @@ app.post("/api/payments/pix", async (req, res) => {
           transaction_amount: Number(order.total.toFixed(2)),
           description: `Pedido #${order.id}`,
           payment_method_id: "pix",
+          external_reference: order.id,
           payer: {
             email: `cliente.${order.id}@email.com`,
             first_name: order.customer.name.split(" ")[0] || "Cliente",
@@ -453,15 +508,18 @@ app.post("/api/payments/pix", async (req, res) => {
         }
       )
       .then((response) => response.data);
+
     console.log("Payment created:", {
       id: result.id,
       status: result.status,
       status_detail: result.status_detail,
     });
+
     if (!result.point_of_interaction?.transaction_data) {
       console.error("Invalid payment response - missing QR code data:", result);
       throw new Error("Payment creation failed");
     }
+
     const transactionData = result.point_of_interaction.transaction_data;
     res.json({
       qrCode: {
@@ -487,8 +545,10 @@ app.post("/api/payments/pix", async (req, res) => {
     });
   }
 });
+
 app.get("/api/payments/:transactionId/status", async (req, res) => {
   const { transactionId } = req.params;
+
   try {
     const response = await payment.get(transactionId);
     const body = response?.response || response?.body || response;
@@ -502,8 +562,63 @@ app.get("/api/payments/:transactionId/status", async (req, res) => {
     res.status(500).json({ error: "Failed to check payment status" });
   }
 });
+
+// Webhook for Mercado Pago payment notifications
+app.post("/api/payments/webhook", async (req, res) => {
+  console.log("Received webhook notification:", JSON.stringify(req.body, null, 2));
+
+  const paymentId = req.body.data?.id || req.body.id || req.query.id;
+  const topic = req.body.type || req.body.topic || req.query.topic;
+
+  if (!paymentId || (topic && topic !== "payment" && topic !== "payment.created" && topic !== "payment.updated")) {
+    return res.status(200).send("OK (ignored non-payment or empty topic)");
+  }
+
+  try {
+    console.log(`Fetching payment status for ID: ${paymentId}`);
+    let paymentInfo;
+    try {
+      if (payment && typeof payment.get === "function") {
+        paymentInfo = await payment.get({ id: paymentId });
+        paymentInfo = paymentInfo?.response || paymentInfo;
+      } else {
+        paymentInfo = await getPaymentDirect(paymentId);
+      }
+    } catch (getErr) {
+      console.error(`Failed to fetch payment info for ${paymentId} from Mercado Pago:`, getErr.message);
+      return res.status(200).send("OK (could not verify, but acknowledged webhook)");
+    }
+
+    console.log(`Payment info status: ${paymentInfo?.status}, external_reference: ${paymentInfo?.external_reference}`);
+
+    const externalRef = paymentInfo?.external_reference;
+    if (externalRef && paymentInfo?.status === "approved") {
+      const orders = readOrders();
+      const orderIndex = orders.findIndex((o) => o.id === externalRef);
+
+      if (orderIndex !== -1) {
+        if (orders[orderIndex].status === "PENDING") {
+          orders[orderIndex].status = "ACCEPTED";
+          writeOrders(orders);
+          console.log(`Order ${externalRef} successfully approved via Webhook.`);
+        } else {
+          console.log(`Order ${externalRef} is already in status: ${orders[orderIndex].status}`);
+        }
+      } else {
+        console.warn(`Order with external_reference ${externalRef} not found in database.`);
+      }
+    }
+
+    res.status(200).send("OK");
+  } catch (error) {
+    console.error("Error processing webhook:", error);
+    res.status(500).json({ error: "Internal processing error" });
+  }
+});
+
 // Initialize data and start server
 initializeDataFiles();
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error("Unhandled error:", err);
@@ -513,7 +628,9 @@ app.use((err, req, res, next) => {
     stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
   });
 });
+
 // Start server with error handling
+
 const server = app
   .listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
@@ -529,6 +646,7 @@ const server = app
     }
     process.exit(1);
   });
+
 // Handle graceful shutdown
 process.on("SIGTERM", () => {
   console.info("SIGTERM signal received. Closing server...");
@@ -537,3 +655,5 @@ process.on("SIGTERM", () => {
     process.exit(0);
   });
 });
+
+

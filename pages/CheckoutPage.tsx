@@ -69,25 +69,43 @@ const CheckoutPage: React.FC = () => {
     }
   };
 
-  const checkPixPaymentStatus = async () => {
-    if (!pixData?.transactionId) return;
+  const checkPixPaymentStatus = React.useCallback(async (showAlertOnError = false) => {
+    const pId = pixData?.paymentId || pixData?.transactionId;
+    if (!pId) return;
 
-    setIsLoadingPix(true);
+    if (showAlertOnError) {
+      setIsLoadingPix(true);
+    }
     try {
-      const status = await checkPaymentStatus(pixData.transactionId);
+      const status = await checkPaymentStatus(pId);
       setPaymentStatus(status);
 
       if (status.paid) {
-        // Update order status or proceed with confirmation
+        clearCart();
         setStep("CONFIRMATION");
       }
     } catch (error) {
       console.error("Failed to check payment status:", error);
-      alert("Erro ao verificar status do pagamento. Tente novamente.");
+      if (showAlertOnError) {
+        alert("Erro ao verificar status do pagamento. Tente novamente.");
+      }
     } finally {
-      setIsLoadingPix(false);
+      if (showAlertOnError) {
+        setIsLoadingPix(false);
+      }
     }
-  };
+  }, [pixData, clearCart]);
+
+  useEffect(() => {
+    const pId = pixData?.paymentId || pixData?.transactionId;
+    if (!pId || paymentStatus?.paid) return;
+
+    const interval = setInterval(() => {
+      checkPixPaymentStatus(false);
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [pixData, paymentStatus, checkPixPaymentStatus]);
 
   if (cartCount === 0 && step !== "CONFIRMATION") {
     navigate("/");
@@ -447,14 +465,15 @@ const CheckoutPage: React.FC = () => {
                       paymentMethod === method
                         ? "border-orange-500 ring-2 ring-orange-500"
                         : ""
-                    }`}
+                    } ${confirmedOrder ? "opacity-50 cursor-not-allowed" : ""}`}
                   >
                     <input
                       type="radio"
                       name="paymentMethod"
                       value={method}
                       checked={paymentMethod === method}
-                      onChange={() => setPaymentMethod(method)}
+                      onChange={() => !confirmedOrder && setPaymentMethod(method)}
+                      disabled={!!confirmedOrder}
                       className="hidden"
                     />
                     <span className="text-lg font-semibold">
@@ -470,7 +489,7 @@ const CheckoutPage: React.FC = () => {
               </div>
               {paymentMethod === PaymentMethod.PIX && confirmedOrder && (
                 <div className="mt-6 text-center" id="pix-payment">
-                  <p className="mb-2">Escaneie o QR Code para pagar:</p>
+                  <p className="mb-2 font-medium text-gray-800">Escaneie o QR Code para pagar:</p>
                   {isLoadingPix ? (
                     <div className="animate-pulse flex flex-col items-center">
                       <div className="w-48 h-48 bg-gray-200 rounded-lg"></div>
@@ -485,30 +504,34 @@ const CheckoutPage: React.FC = () => {
                       />
                       <div className="mt-4 space-y-2">
                         <button
+                          type="button"
                           onClick={() => {
                             navigator.clipboard.writeText(pixData.qrCode.code);
                             alert("Código PIX copiado!");
                           }}
-                          className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 transition-colors"
+                          className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 transition-colors w-full sm:w-auto"
                         >
                           Copiar código PIX
                         </button>
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-gray-500 mt-2">
                           Expira em:{" "}
                           {new Date(pixData.expiresIn).toLocaleString()}
                         </p>
                         {paymentStatus && !paymentStatus.paid && (
-                          <button
-                            onClick={checkPixPaymentStatus}
-                            className="text-blue-500 hover:text-blue-600"
-                          >
-                            Verificar pagamento
-                          </button>
+                          <div className="pt-2">
+                            <button
+                              type="button"
+                              onClick={() => checkPixPaymentStatus(true)}
+                              className="text-blue-500 hover:text-blue-600 font-semibold"
+                            >
+                              Verificar pagamento manualmente
+                            </button>
+                          </div>
                         )}
                       </div>
                     </>
                   ) : (
-                    <p className="text-red-500">
+                    <p className="text-red-500 font-medium">
                       Erro ao gerar QR Code PIX. Tente novamente.
                     </p>
                   )}
@@ -521,9 +544,10 @@ const CheckoutPage: React.FC = () => {
                 </label>
                 <textarea
                   value={observations}
-                  onChange={(e) => setObservations(e.target.value)}
+                  onChange={(e) => !confirmedOrder && setObservations(e.target.value)}
+                  disabled={!!confirmedOrder}
                   placeholder="Ex: Sem cebola, bem temperado, etc..."
-                  className="w-full p-3 border rounded-md focus:ring-2 focus:ring-orange-500"
+                  className="w-full p-3 border rounded-md focus:ring-2 focus:ring-orange-500 disabled:bg-gray-50"
                   rows={3}
                   maxLength={200}
                 />
@@ -532,13 +556,21 @@ const CheckoutPage: React.FC = () => {
                 </p>
               </div>
 
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full bg-green-600 text-white font-bold py-3 mt-6 rounded-md hover:bg-green-700 transition-colors disabled:bg-gray-400"
-              >
-                {isLoading ? "Processando..." : "Finalizar Pedido"}
-              </button>
+              {!confirmedOrder ? (
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full bg-green-600 text-white font-bold py-3 mt-6 rounded-md hover:bg-green-700 transition-colors disabled:bg-gray-400"
+                >
+                  {isLoading ? "Processando..." : "Finalizar Pedido"}
+                </button>
+              ) : (
+                paymentMethod === PaymentMethod.PIX && (
+                  <div className="mt-6 p-4 bg-yellow-50 text-yellow-800 rounded-md text-center font-medium border border-yellow-200">
+                    Aguardando a confirmação do pagamento PIX acima para prosseguir...
+                  </div>
+                )
+              )}
             </form>
           )}
 
