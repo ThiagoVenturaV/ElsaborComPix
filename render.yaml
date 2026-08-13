@@ -15,7 +15,7 @@ services:
     # Comando de Build:
     # 1. Instala todas as dependências (npm install)
     # 2. Compila o TypeScript do servidor (npm run build:server)
-    buildCommand: "npm install && npm run build:server"
+    buildCommand: "npm ci && npm run build:server"
     
     # Comando de Início:
     # Executa o servidor Node.js compilado
@@ -30,7 +30,16 @@ services:
 
       # (MUITO IMPORTANTE) A URL do seu frontend para o CORS
       # Seu backend precisa saber a URL da Vercel para aceitar requisições dela.
-      - key: CORS_ORIGIN 
+      - key: ADMIN_PASSWORD_HASH
+        sync: false
+
+      - key: ADMIN_SESSION_SECRET
+        generateValue: true
+
+      - key: MERCADO_PAGO_WEBHOOK_URL
+        sync: false
+
+      - key: ALLOWED_ORIGINS
         value: "https://elsabor-restaurante.vercel.app"
         
       # NOTA: A variável 'PORT' é definida automaticamente pelo Render.

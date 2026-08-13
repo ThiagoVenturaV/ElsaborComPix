@@ -1,659 +1,668 @@
 import { fileURLToPath } from "url";
 import path from "path";
 import dotenv from "dotenv";
-
-// Configure dotenv before any other imports
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const envPath = path.resolve(__dirname, ".env");
-let result = {};
-
-if (process.env.NODE_ENV !== "production") {
-  result = dotenv.config({ path: envPath });
-}
-
-if (result.error && process.env.NODE_ENV !== "production") {
-  console.warn("⚠️ .env não encontrado no ambiente de desenvolvimento");
-}
-
-// Double check environment variables
-if (!process.env.MERCADO_PAGO_ACCESS_TOKEN) {
-  console.error("MERCADO_PAGO_ACCESS_TOKEN is not set in environment");
-  process.exit(1);
-}
-
-// Log loaded configuration
-console.log("Configuration loaded:", {
-  envPath,
-  port: process.env.PORT || 3001,
-  mpTokenPrefix: process.env.MERCADO_PAGO_ACCESS_TOKEN.substring(0, 10) + "...",
-});
-
+import {
+  createHash,
+  createHmac,
+  randomBytes,
+  scryptSync,
+  timingSafeEqual,
+} from "crypto";
 import express from "express";
 import cors from "cors";
 import fs from "fs";
-import * as mercadopagoPkg from "mercadopago";
 import axios from "axios";
-import { createOrderOnMP, getOrderOnMP } from "./services/orders.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+if (process.env.NODE_ENV !== "production") {
+  const result = dotenv.config({ path: path.resolve(__dirname, ".env") });
+  if (result.error) console.warn("Development .env file was not found");
+}
 
 const app = express();
 const PORT = process.env.PORT || process.env.SERVER_PORT || 3001;
+const isProduction = process.env.NODE_ENV === "production";
+const ADMIN_COOKIE = "admin_session";
+const ADMIN_SESSION_TTL_SECONDS = 8 * 60 * 60;
+const DATA_DIR = process.env.DATA_DIR
+  ? path.resolve(process.env.DATA_DIR)
+  : path.join(__dirname, "data");
+const MENU_FILE = path.join(DATA_DIR, "menu.json");
+const ORDERS_FILE = path.join(DATA_DIR, "orders.json");
 
-// Middleware
-app.use(cors());
-app.use(express.json());
+const requiredEnvironment = [
+  "MERCADO_PAGO_ACCESS_TOKEN",
+  "ADMIN_PASSWORD_HASH",
+  "ADMIN_SESSION_SECRET",
+];
+const missingEnvironment = requiredEnvironment.filter(
+  (name) => !process.env[name]
+);
 
-// Data storage files
-const MENU_FILE = path.join(__dirname, "data", "menu.json");
-const ORDERS_FILE = path.join(__dirname, "data", "orders.json");
-
-// Ensure data directory exists (use recursive to be safe)
-const dataDir = path.join(__dirname, "data");
-try {
-  if (!fs.existsSync(dataDir)) {
-    fs.mkdirSync(dataDir, { recursive: true });
-  }
-} catch (err) {
-  console.error("Failed to ensure data directory exists:", err);
-  // If we can't ensure the data directory exists, exit early to avoid corrupt state
+if (missingEnvironment.length > 0) {
+  console.error(
+    `Missing required environment variables: ${missingEnvironment.join(", ")}`
+  );
+  process.exit(1);
+}
+if (process.env.ADMIN_SESSION_SECRET.length < 32) {
+  console.error("ADMIN_SESSION_SECRET must contain at least 32 characters");
   process.exit(1);
 }
 
-// Initialize data files if they don't exist
-const initializeDataFiles = () => {
-  if (!fs.existsSync(MENU_FILE)) {
-    const initialMenu = [
-      {
-        id: 1,
-        name: "Hambúrguer Clássico",
-        description: "Pão, carne, queijo, alface, tomate e molho especial.",
-        price: 25.5,
-        category: "Hambúrgueres",
-        image: "https://picsum.photos/id/1060/400/300",
-      },
-      {
-        id: 2,
-        name: "Hambúrguer Duplo Bacon",
-        description:
-          "Pão, duas carnes, dobro de bacon, queijo cheddar e barbecue.",
-        price: 32.0,
-        category: "Hambúrgueres",
-        image: "https://picsum.photos/id/312/400/300",
-      },
-      {
-        id: 3,
-        name: "Pizza Margherita",
-        description: "Molho de tomate, mussarela fresca e manjericão.",
-        price: 45.0,
-        category: "Pizzas",
-        image: "https://picsum.photos/id/292/400/300",
-      },
-      {
-        id: 4,
-        name: "Pizza Calabresa",
-        description: "Molho de tomate, mussarela, calabresa e cebola.",
-        price: 48.5,
-        category: "Pizzas",
-        image: "https://picsum.photos/id/102/400/300",
-      },
-      {
-        id: 5,
-        name: "Batata Frita",
-        description: "Porção generosa de batatas fritas crocantes.",
-        price: 15.0,
-        category: "Acompanhamentos",
-        image: "https://picsum.photos/id/1084/400/300",
-      },
-      {
-        id: 6,
-        name: "Refrigerante Lata",
-        description: "Coca-Cola, Guaraná ou Soda.",
-        price: 6.0,
-        category: "Bebidas",
-        image: "https://picsum.photos/id/119/400/300",
-      },
-    ];
-    fs.writeFileSync(MENU_FILE, JSON.stringify(initialMenu, null, 2), "utf8");
+const parsePasswordHash = () => {
+  const [algorithm, saltHex, expectedHex] =
+    process.env.ADMIN_PASSWORD_HASH.split(":");
+  if (
+    algorithm !== "scrypt" ||
+    !/^[a-f0-9]{32,}$/i.test(saltHex || "") ||
+    !/^[a-f0-9]{64,}$/i.test(expectedHex || "") ||
+    expectedHex.length % 2 !== 0
+  ) {
+    throw new Error(
+      "ADMIN_PASSWORD_HASH must use the format scrypt:<salt-hex>:<hash-hex>"
+    );
   }
-
-  if (!fs.existsSync(ORDERS_FILE)) {
-    fs.writeFileSync(ORDERS_FILE, JSON.stringify([], null, 2), "utf8");
-  }
-};
-
-// Helper functions
-const readMenu = () => {
-  try {
-    const data = fs.readFileSync(MENU_FILE, "utf8");
-    return JSON.parse(data);
-  } catch (error) {
-    console.error("Error reading menu:", error);
-    return [];
-  }
-};
-
-const writeMenu = (menu) => {
-  try {
-    fs.writeFileSync(MENU_FILE, JSON.stringify(menu, null, 2), "utf8");
-    return true;
-  } catch (error) {
-    console.error("Error writing menu:", error);
-    return false;
-  }
-};
-
-const readOrders = () => {
-  try {
-    const data = fs.readFileSync(ORDERS_FILE, "utf8");
-    return JSON.parse(data);
-  } catch (error) {
-    console.error("Error reading orders:", error);
-    return [];
-  }
-};
-
-const writeOrders = (orders) => {
-  try {
-    fs.writeFileSync(ORDERS_FILE, JSON.stringify(orders, null, 2), "utf8");
-    return true;
-  } catch (error) {
-    console.error("Error writing orders:", error);
-    return false;
-  }
-};
-
-// Routes
-
-// Menu routes
-app.get("/api/menu", (req, res) => {
-  const menu = readMenu();
-  res.json(menu);
-});
-
-app.post("/api/menu", (req, res) => {
-  const menu = readMenu();
-  // Basic validation: require a name and price
-  const { name, price } = req.body || {};
-  if (!name || typeof price !== "number") {
-    return res.status(400).json({
-      error:
-        'Invalid menu item. "name" (string) and "price" (number) are required.',
-    });
-  }
-
-  // Normalize existing ids to numbers and compute next id safely
-  const existingIds = menu
-    .map((item) => Number(item.id))
-    .filter((n) => Number.isFinite(n));
-  const nextId = existingIds.length ? Math.max(...existingIds) + 1 : 1;
-
-  const newItem = {
-    id: nextId,
-    ...req.body,
+  return {
+    salt: Buffer.from(saltHex, "hex"),
+    expected: Buffer.from(expectedHex, "hex"),
   };
+};
 
-  menu.push(newItem);
-
-  if (writeMenu(menu)) {
-    res.status(201).json(newItem);
-  } else {
-    res.status(500).json({ error: "Failed to save menu item" });
-  }
-});
-
-app.put("/api/menu/:id", (req, res) => {
-  const menu = readMenu();
-  const itemId = parseInt(req.params.id);
-  const itemIndex = menu.findIndex((item) => item.id === itemId);
-
-  if (itemIndex === -1) {
-    return res.status(404).json({ error: "Menu item not found" });
-  }
-
-  menu[itemIndex] = { ...menu[itemIndex], ...req.body };
-
-  if (writeMenu(menu)) {
-    res.json(menu[itemIndex]);
-  } else {
-    res.status(500).json({ error: "Failed to update menu item" });
-  }
-});
-
-app.delete("/api/menu/:id", (req, res) => {
-  const menu = readMenu();
-  const itemId = parseInt(req.params.id);
-  const filteredMenu = menu.filter((item) => item.id !== itemId);
-
-  if (filteredMenu.length === menu.length) {
-    return res.status(404).json({ error: "Menu item not found" });
-  }
-
-  if (writeMenu(filteredMenu)) {
-    res.status(204).send();
-  } else {
-    res.status(500).json({ error: "Failed to delete menu item" });
-  }
-});
-
-// Orders routes
-app.get("/api/orders", (req, res) => {
-  const orders = readOrders();
-  res.json(orders);
-});
-
-app.post("/api/orders", (req, res) => {
-  const orders = readOrders();
-  // Basic validation for orders: require items array and total
-  const { items, total } = req.body || {};
-  if (!Array.isArray(items) || typeof total !== "number") {
-    return res.status(400).json({
-      error:
-        'Invalid order. "items" (array) and "total" (number) are required.',
-    });
-  }
-
-  const newOrder = {
-    id: `ORDER-${Date.now()}`,
-    createdAt: new Date().toISOString(),
-    status: "PENDING",
-    ...req.body,
-  };
-
-  orders.push(newOrder);
-
-  if (writeOrders(orders)) {
-    res.status(201).json(newOrder);
-  } else {
-    res.status(500).json({ error: "Failed to save order" });
-  }
-});
-
-app.put("/api/orders/:id/status", (req, res) => {
-  const orders = readOrders();
-  const orderId = req.params.id;
-  const orderIndex = orders.findIndex((order) => order.id === orderId);
-
-  if (orderIndex === -1) {
-    return res.status(404).json({ error: "Order not found" });
-  }
-
-  orders[orderIndex].status = req.body.status;
-
-  if (writeOrders(orders)) {
-    res.json(orders[orderIndex]);
-  } else {
-    res.status(500).json({ error: "Failed to update order status" });
-  }
-});
-
-// Health check
-app.get("/api/health", (req, res) => {
-  res.json({ status: "OK", timestamp: new Date().toISOString() });
-});
-
-// Configure MercadoPago
-console.log(
-  "Initializing Mercado Pago with token:",
-  process.env.MERCADO_PAGO_ACCESS_TOKEN?.substring(0, 10) + "..."
-);
-
-// Initialize Mercado Pago client with runtime detection to support several SDK shapes
-let mp;
-if (typeof mercadopagoPkg.MercadoPago === "function") {
-  // export: { MercadoPago }
-  mp = new mercadopagoPkg.MercadoPago({
-    accessToken: process.env.MERCADO_PAGO_ACCESS_TOKEN || "",
-  });
-} else if (typeof mercadopagoPkg.MercadoPagoConfig === "function") {
-  // older named export
-  mp = new mercadopagoPkg.MercadoPagoConfig({
-    accessToken: process.env.MERCADO_PAGO_ACCESS_TOKEN || "",
-  });
-} else if (typeof mercadopagoPkg.default === "function") {
-  // default constructor export
-  mp = new mercadopagoPkg.default({
-    accessToken: process.env.MERCADO_PAGO_ACCESS_TOKEN || "",
-  });
-} else if (typeof mercadopagoPkg.configure === "function") {
-  // v1-style SDK: configure in place
-  mercadopagoPkg.configure({
-    access_token: process.env.MERCADO_PAGO_ACCESS_TOKEN || "",
-  });
-  mp = mercadopagoPkg;
-} else {
-  throw new Error(
-    "Unsupported mercadopago SDK shape - cannot initialize client"
-  );
+let adminPassword;
+try {
+  adminPassword = parsePasswordHash();
+} catch (error) {
+  console.error(error.message);
+  process.exit(1);
 }
 
-// Payment helper reference
-const payment = mp.payment;
+const configuredOrigins = (
+  process.env.ALLOWED_ORIGINS ||
+  process.env.CORS_ORIGIN ||
+  ""
+)
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+const allowedOrigins =
+  configuredOrigins.length > 0
+    ? configuredOrigins
+    : ["http://localhost:3000", "http://localhost:5173"];
 
-// Fallback: direct REST call to Mercado Pago if SDK shape doesn't expose payment.create
-const createPaymentDirect = async (payload) => {
-  const token = process.env.MERCADO_PAGO_ACCESS_TOKEN || "";
-  const url = "https://api.mercadopago.com/v1/payments";
-  const headers = {
-    Authorization: `Bearer ${token}`,
-    "Content-Type": "application/json",
-  };
+if (isProduction && configuredOrigins.length === 0) {
+  console.error("ALLOWED_ORIGINS is required in production");
+  process.exit(1);
+}
 
-  const response = await axios.post(url, payload, { headers });
-  return response.data;
+console.log("Configuration loaded", { port: PORT, allowedOrigins });
+
+app.disable("x-powered-by");
+if (isProduction) app.set("trust proxy", 1);
+app.use((_req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Referrer-Policy", "no-referrer");
+  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  if (isProduction) {
+    res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+  }
+  next();
+});
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+      return callback(new Error("Origin is not allowed by CORS"));
+    },
+    credentials: true,
+  })
+);
+app.use(express.json({ limit: "100kb" }));
+
+const parseCookies = (cookieHeader = "") =>
+  Object.fromEntries(
+    cookieHeader
+      .split(";")
+      .map((cookie) => cookie.trim())
+      .filter(Boolean)
+      .map((cookie) => {
+        const separator = cookie.indexOf("=");
+        if (separator === -1) return [cookie, ""];
+        return [
+          decodeURIComponent(cookie.slice(0, separator)),
+          decodeURIComponent(cookie.slice(separator + 1)),
+        ];
+      })
+  );
+
+const verifyAdminPassword = (password) => {
+  if (typeof password !== "string" || password.length > 256) return false;
+  const actual = scryptSync(
+    password,
+    adminPassword.salt,
+    adminPassword.expected.length
+  );
+  return timingSafeEqual(actual, adminPassword.expected);
 };
 
-const getPaymentDirect = async (transactionId) => {
-  const token = process.env.MERCADO_PAGO_ACCESS_TOKEN || "";
-  const url = `https://api.mercadopago.com/v1/payments/${transactionId}`;
-  const headers = { Authorization: `Bearer ${token}` };
-  const response = await axios.get(url, { headers });
-  return response.data;
+const signAdminSession = () => {
+  const payload = Buffer.from(
+    JSON.stringify({ exp: Date.now() + ADMIN_SESSION_TTL_SECONDS * 1000 })
+  ).toString("base64url");
+  const signature = createHmac("sha256", process.env.ADMIN_SESSION_SECRET)
+    .update(payload)
+    .digest("base64url");
+  return `${payload}.${signature}`;
 };
 
-// Test Mercado Pago configuration
-const testMercadoPago = async () => {
+const verifyAdminSession = (token) => {
+  if (typeof token !== "string") return false;
+  const [payload, signature] = token.split(".");
+  if (!payload || !signature) return false;
+  const expected = createHmac("sha256", process.env.ADMIN_SESSION_SECRET)
+    .update(payload)
+    .digest();
+  let supplied;
   try {
-    console.log("Testing Mercado Pago payment creation...");
-    const payload = {
-      transaction_amount: Number(10),
-      description: "Pedido de Teste - El Sabor",
-      payment_method_id: "pix",
-      installments: 1,
-      payer: {
-        email: "cliente@gmail.com",
-        first_name: "João",
-        last_name: "Silva",
-        identification: {
-          type: "CPF",
-          number: "97532419081", // CPF válido para testes
-        },
-      },
-      notification_url: "https://webhook.site/xyz", // Precisaremos configurar uma URL válida depois
-    };
-    console.log("Payment payload:", JSON.stringify(payload, null, 2));
-    console.log(
-      "Using token:",
-      process.env.MERCADO_PAGO_ACCESS_TOKEN?.substring(0, 15) + "..."
-    );
-
-    let testPayment;
-    try {
-      if (payment && typeof payment.create === "function") {
-        testPayment = await payment.create(payload);
-        console.log(
-          "Raw test payment response (SDK):",
-          JSON.stringify(testPayment, null, 2)
-        );
-        testPayment = testPayment?.response || testPayment;
-      } else {
-        testPayment = await createPaymentDirect(payload);
-        console.log(
-          "Raw test payment response (REST):",
-          JSON.stringify(testPayment, null, 2)
-        );
-      }
-      console.log(
-        "Normalized test response body:",
-        JSON.stringify(testPayment, null, 2)
-      );
-      return true;
-    } catch (error) {
-      console.error("Mercado Pago test failed:", {
-        message: error.message,
-        status: error.status,
-        statusText: error.statusText,
-        response: error.response?.data,
-        headers: error.response?.headers,
-      });
-      if (error.cause) {
-        console.error("Error cause:", error.cause);
-      }
-      // Try to get token information
-      try {
-        const tokenInfo = await axios.get(
-          "https://api.mercadopago.com/users/me",
-          {
-            headers: {
-              Authorization: `Bearer ${process.env.MERCADO_PAGO_ACCESS_TOKEN}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-        console.log("Token info:", tokenInfo.data);
-      } catch (tokenError) {
-        console.error("Failed to get token info:", tokenError.response?.data);
-      }
-      return false;
-    }
-  } catch (err) {
-    console.error("Unexpected error in testMercadoPago:", err);
+    supplied = Buffer.from(signature, "base64url");
+  } catch {
+    return false;
+  }
+  if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) {
+    return false;
+  }
+  try {
+    const session = JSON.parse(Buffer.from(payload, "base64url").toString());
+    return Number.isFinite(session.exp) && session.exp > Date.now();
+  } catch {
     return false;
   }
 };
 
-// Run test when server starts
-testMercadoPago();
+const requireAdmin = (req, res, next) => {
+  const token = parseCookies(req.headers.cookie)[ADMIN_COOKIE];
+  if (!verifyAdminSession(token)) {
+    return res.status(401).json({ error: "Authentication required" });
+  }
+  next();
+};
 
-// Payment routes
-app.post("/api/payments/pix", async (req, res) => {
-  const { orderId, customerName, customerPhone } = req.body;
+const loginAttempts = new Map();
+const allowLoginAttempt = (req) => {
+  const now = Date.now();
+  const windowStart = now - 15 * 60 * 1000;
+  const key = req.ip || req.socket.remoteAddress || "unknown";
+  const recent = (loginAttempts.get(key) || []).filter(
+    (timestamp) => timestamp > windowStart
+  );
+  if (recent.length >= 5) return false;
+  recent.push(now);
+  loginAttempts.set(key, recent);
+  return true;
+};
 
-  if (!orderId || !customerName || !customerPhone) {
-    return res
-      .status(400)
-      .json({ error: "Order ID, customer name and phone are required" });
+const createRateLimiter = ({ limit, windowMs }) => {
+  const requests = new Map();
+  return (req, res, next) => {
+    const now = Date.now();
+    const key = req.ip || req.socket.remoteAddress || "unknown";
+    const recent = (requests.get(key) || []).filter(
+      (timestamp) => timestamp > now - windowMs
+    );
+    if (recent.length >= limit) {
+      return res.status(429).json({ error: "Too many requests" });
+    }
+    recent.push(now);
+    requests.set(key, recent);
+    next();
+  };
+};
+const orderLimiter = createRateLimiter({ limit: 30, windowMs: 15 * 60 * 1000 });
+const paymentLimiter = createRateLimiter({ limit: 10, windowMs: 15 * 60 * 1000 });
+
+const hashOrderAccessToken = (token) =>
+  createHash("sha256").update(token).digest("hex");
+const hasOrderAccess = (order, token) => {
+  if (!order?.accessTokenHash || typeof token !== "string") return false;
+  const expected = Buffer.from(order.accessTokenHash, "hex");
+  const supplied = Buffer.from(hashOrderAccessToken(token), "hex");
+  return expected.length === supplied.length && timingSafeEqual(expected, supplied);
+};
+const serializeOrder = (order) => {
+  const { accessTokenHash, ...safeOrder } = order;
+  return safeOrder;
+};
+
+const ensureDataFiles = () => {
+  const dataDir = path.dirname(MENU_FILE);
+  fs.mkdirSync(dataDir, { recursive: true });
+  if (!fs.existsSync(MENU_FILE)) fs.writeFileSync(MENU_FILE, "[]", "utf8");
+  if (!fs.existsSync(ORDERS_FILE)) fs.writeFileSync(ORDERS_FILE, "[]", "utf8");
+};
+const readJsonArray = (file) => {
+  try {
+    const value = JSON.parse(fs.readFileSync(file, "utf8"));
+    return Array.isArray(value) ? value : [];
+  } catch (error) {
+    console.error(`Failed to read ${path.basename(file)}`, error.message);
+    return [];
+  }
+};
+const writeJsonArray = (file, value) => {
+  const temporary = `${file}.${process.pid}.tmp`;
+  try {
+    fs.writeFileSync(temporary, JSON.stringify(value, null, 2), "utf8");
+    fs.renameSync(temporary, file);
+    return true;
+  } catch (error) {
+    console.error(`Failed to write ${path.basename(file)}`, error.message);
+    try {
+      if (fs.existsSync(temporary)) fs.unlinkSync(temporary);
+    } catch {}
+    return false;
+  }
+};
+const readMenu = () => readJsonArray(MENU_FILE);
+const readOrders = () => readJsonArray(ORDERS_FILE);
+const writeMenu = (menu) => writeJsonArray(MENU_FILE, menu);
+const writeOrders = (orders) => writeJsonArray(ORDERS_FILE, orders);
+
+app.post("/api/admin/login", (req, res) => {
+  if (!allowLoginAttempt(req)) {
+    return res.status(429).json({ error: "Too many login attempts" });
+  }
+  if (!verifyAdminPassword(req.body?.password)) {
+    return res.status(401).json({ error: "Invalid credentials" });
+  }
+  const cookie = [
+    `${ADMIN_COOKIE}=${encodeURIComponent(signAdminSession())}`,
+    "HttpOnly",
+    `SameSite=${isProduction ? "None" : "Lax"}`,
+    "Path=/",
+    `Max-Age=${ADMIN_SESSION_TTL_SECONDS}`,
+    isProduction ? "Secure" : "",
+  ]
+    .filter(Boolean)
+    .join("; ");
+  res.setHeader("Set-Cookie", cookie);
+  return res.status(204).send();
+});
+app.get("/api/admin/session", requireAdmin, (_req, res) =>
+  res.status(204).send()
+);
+app.post("/api/admin/logout", (_req, res) => {
+  res.setHeader(
+    "Set-Cookie",
+    `${ADMIN_COOKIE}=; HttpOnly; SameSite=${
+      isProduction ? "None" : "Lax"
+    }; Path=/; Max-Age=0${
+      isProduction ? "; Secure" : ""
+    }`
+  );
+  return res.status(204).send();
+});
+
+app.get("/api/menu", (_req, res) => res.json(readMenu()));
+app.post("/api/menu", requireAdmin, (req, res) => {
+  const { name, description, price, category, image, flavors } = req.body || {};
+  if (
+    typeof name !== "string" ||
+    name.trim().length === 0 ||
+    name.length > 120 ||
+    typeof price !== "number" ||
+    !Number.isFinite(price) ||
+    price < 0 ||
+    price > 100000 ||
+    (description !== undefined &&
+      (typeof description !== "string" || description.length > 1000)) ||
+    (category !== undefined &&
+      (typeof category !== "string" || category.length > 80)) ||
+    (image !== undefined && (typeof image !== "string" || image.length > 2048)) ||
+    (flavors !== undefined &&
+      (!Array.isArray(flavors) ||
+        flavors.length > 50 ||
+        flavors.some(
+          (flavor) => typeof flavor !== "string" || flavor.length > 100
+        )))
+  ) {
+    return res.status(400).json({ error: "Invalid menu item" });
+  }
+  const menu = readMenu();
+  const ids = menu.map((item) => Number(item.id)).filter(Number.isFinite);
+  const newItem = {
+    id: ids.length ? Math.max(...ids) + 1 : 1,
+    name: name.trim(),
+    description: description?.trim() || "",
+    price: Math.round(price * 100) / 100,
+    category: category?.trim() || "",
+    image: image?.trim() || "",
+    ...(flavors ? { flavors: flavors.map((flavor) => flavor.trim()) } : {}),
+  };
+  menu.push(newItem);
+  return writeMenu(menu)
+    ? res.status(201).json(newItem)
+    : res.status(500).json({ error: "Failed to save menu item" });
+});
+app.put("/api/menu/:id", requireAdmin, (req, res) => {
+  const menu = readMenu();
+  const itemId = Number(req.params.id);
+  const itemIndex = menu.findIndex((item) => Number(item.id) === itemId);
+  if (!Number.isInteger(itemId) || itemIndex === -1) {
+    return res.status(404).json({ error: "Menu item not found" });
+  }
+  const allowedFields = [
+    "name",
+    "description",
+    "price",
+    "category",
+    "image",
+    "flavors",
+  ];
+  const updates = Object.fromEntries(
+    Object.entries(req.body || {}).filter(([key]) => allowedFields.includes(key))
+  );
+  if (
+    (updates.name !== undefined &&
+      (typeof updates.name !== "string" || updates.name.trim().length === 0)) ||
+    (updates.price !== undefined &&
+      (typeof updates.price !== "number" ||
+        !Number.isFinite(updates.price) ||
+        updates.price < 0 ||
+        updates.price > 100000)) ||
+    (updates.flavors !== undefined &&
+      (!Array.isArray(updates.flavors) ||
+        updates.flavors.some((flavor) => typeof flavor !== "string")))
+  ) {
+    return res.status(400).json({ error: "Invalid menu item update" });
+  }
+  menu[itemIndex] = { ...menu[itemIndex], ...updates, id: itemId };
+  return writeMenu(menu)
+    ? res.json(menu[itemIndex])
+    : res.status(500).json({ error: "Failed to update menu item" });
+});
+app.delete("/api/menu/:id", requireAdmin, (req, res) => {
+  const menu = readMenu();
+  const itemId = Number(req.params.id);
+  const filtered = menu.filter((item) => Number(item.id) !== itemId);
+  if (!Number.isInteger(itemId) || filtered.length === menu.length) {
+    return res.status(404).json({ error: "Menu item not found" });
+  }
+  return writeMenu(filtered)
+    ? res.status(204).send()
+    : res.status(500).json({ error: "Failed to delete menu item" });
+});
+
+app.get("/api/orders", requireAdmin, (_req, res) =>
+  res.json(readOrders().map(serializeOrder))
+);
+app.post("/api/orders", orderLimiter, (req, res) => {
+  const { items, user, deliveryType, paymentMethod, observations } =
+    req.body || {};
+  const phoneDigits =
+    typeof user?.phone === "string" ? user.phone.replace(/\D/g, "") : "";
+  if (
+    !Array.isArray(items) ||
+    items.length === 0 ||
+    items.length > 50 ||
+    typeof user?.name !== "string" ||
+    user.name.trim().length < 2 ||
+    user.name.length > 120 ||
+    phoneDigits.length < 10 ||
+    phoneDigits.length > 15 ||
+    !new Set(["DELIVERY", "PICKUP"]).has(deliveryType) ||
+    !new Set(["CASH", "CARD", "PIX"]).has(paymentMethod) ||
+    (observations !== undefined &&
+      (typeof observations !== "string" || observations.length > 500))
+  ) {
+    return res.status(400).json({ error: "Invalid order" });
   }
 
-  const orders = readOrders();
-  const order = orders.find((o) => o.id === orderId);
+  const menuById = new Map(readMenu().map((item) => [Number(item.id), item]));
+  const normalizedItems = [];
+  for (const requestedItem of items) {
+    const menuItem = menuById.get(Number(requestedItem?.id));
+    const quantity = Number(requestedItem?.quantity);
+    if (
+      !menuItem ||
+      !Number.isInteger(quantity) ||
+      quantity < 1 ||
+      quantity > 99 ||
+      (requestedItem.selectedFlavor !== undefined &&
+        (!Array.isArray(menuItem.flavors) ||
+          !menuItem.flavors.includes(requestedItem.selectedFlavor)))
+    ) {
+      return res.status(400).json({ error: "Invalid order item" });
+    }
+    normalizedItems.push({
+      ...menuItem,
+      quantity,
+      ...(requestedItem.selectedFlavor
+        ? { selectedFlavor: requestedItem.selectedFlavor }
+        : {}),
+    });
+  }
 
-  if (!order) {
+  const total =
+    Math.round(
+      normalizedItems.reduce(
+        (sum, item) => sum + Number(item.price) * item.quantity,
+        0
+      ) * 100
+    ) / 100;
+  const accessToken = randomBytes(32).toString("base64url");
+  const newOrder = {
+    id: `ORDER-${Date.now()}-${randomBytes(6).toString("hex")}`,
+    createdAt: new Date().toISOString(),
+    status: "PENDING",
+    user: {
+      name: user.name.trim(),
+      phone: phoneDigits,
+      ...(typeof user.email === "string" && user.email.length <= 254
+        ? { email: user.email.trim() }
+        : {}),
+      ...(deliveryType === "DELIVERY" &&
+      typeof user.address === "string" &&
+      user.address.length <= 500
+        ? { address: user.address.trim() }
+        : {}),
+    },
+    items: normalizedItems,
+    total,
+    deliveryType,
+    paymentMethod,
+    ...(observations ? { observations: observations.trim() } : {}),
+    accessTokenHash: hashOrderAccessToken(accessToken),
+  };
+  const orders = readOrders();
+  orders.push(newOrder);
+  return writeOrders(orders)
+    ? res.status(201).json({ ...serializeOrder(newOrder), accessToken })
+    : res.status(500).json({ error: "Failed to save order" });
+});
+app.put("/api/orders/:id/status", requireAdmin, (req, res) => {
+  const validStatuses = new Set([
+    "PENDING",
+    "ACCEPTED",
+    "CANCELED",
+    "OUT_FOR_DELIVERY",
+    "DELIVERED",
+    "READY_FOR_PICKUP",
+    "COMPLETED",
+  ]);
+  if (!validStatuses.has(req.body?.status)) {
+    return res.status(400).json({ error: "Invalid order status" });
+  }
+  const orders = readOrders();
+  const order = orders.find((candidate) => candidate.id === req.params.id);
+  if (!order) return res.status(404).json({ error: "Order not found" });
+  order.status = req.body.status;
+  return writeOrders(orders)
+    ? res.json(serializeOrder(order))
+    : res.status(500).json({ error: "Failed to update order status" });
+});
+
+const mercadoPagoHeaders = (idempotencyKey) => ({
+  Authorization: `Bearer ${process.env.MERCADO_PAGO_ACCESS_TOKEN}`,
+  "Content-Type": "application/json",
+  ...(idempotencyKey ? { "X-Idempotency-Key": idempotencyKey } : {}),
+});
+const getPayment = async (paymentId) => {
+  const safeId = String(paymentId);
+  if (!/^\d+$/.test(safeId)) throw new Error("Invalid payment ID");
+  const response = await axios.get(
+    `https://api.mercadopago.com/v1/payments/${safeId}`,
+    { headers: mercadoPagoHeaders() }
+  );
+  return response.data;
+};
+const paymentResponse = (payment) => {
+  const transactionData = payment?.point_of_interaction?.transaction_data;
+  if (!transactionData?.qr_code || !transactionData?.qr_code_base64) {
+    throw new Error("Payment response does not contain PIX data");
+  }
+  return {
+    qrCode: {
+      image: transactionData.qr_code_base64,
+      code: transactionData.qr_code,
+    },
+    expiresIn: transactionData.qr_code_expiration_date,
+    paymentId: String(payment.id),
+    status: payment.status,
+  };
+};
+
+app.post("/api/payments/pix", paymentLimiter, async (req, res) => {
+  const { orderId, orderAccessToken } = req.body || {};
+  let order = readOrders().find((candidate) => candidate.id === orderId);
+  if (!order || !hasOrderAccess(order, orderAccessToken)) {
     return res.status(404).json({ error: "Order not found" });
   }
-
-  // Update order with customer info
-  order.customer = {
-    name: customerName,
-    phone: customerPhone,
-  };
+  if (order.paymentMethod !== "PIX") {
+    return res.status(409).json({ error: "Order does not use PIX" });
+  }
 
   try {
-    // 1. Create order on Mercado Pago first
-    console.log("Creating Mercado Pago order...", {
-      orderId: order.id,
-      total: order.total,
-      items: order.items.length,
-    });
-
-    const mpOrder = await createOrderOnMP(order);
-    console.log("Mercado Pago order created:", mpOrder);
-
-    // 2. Create PIX payment linked to the order
-    console.log("Creating PIX payment for order:", {
-      orderId: order.id,
-      total: order.total,
-      userName: order.user.name,
-      mpOrderId: mpOrder.id,
-    });
-
-    const result = await axios
-      .post(
-        "https://api.mercadopago.com/v1/payments",
-        {
-          transaction_amount: Number(order.total.toFixed(2)),
-          description: `Pedido #${order.id}`,
-          payment_method_id: "pix",
-          external_reference: order.id,
-          payer: {
-            email: `cliente.${order.id}@email.com`,
-            first_name: order.customer.name.split(" ")[0] || "Cliente",
-            last_name: order.customer.name.split(" ").slice(1).join(" ") || "",
-            identification: {
-              type: "CPF",
-              number: "13468423454", // Using test CPF
-            },
-            phone: {
-              area_code: order.customer.phone.substring(0, 2),
-              number: order.customer.phone.substring(2),
-            },
-          },
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${process.env.MERCADO_PAGO_ACCESS_TOKEN}`,
-            "Content-Type": "application/json",
-            "X-Idempotency-Key": `pix_${order.id}_${Date.now()}`,
-          },
-        }
-      )
-      .then((response) => response.data);
-
-    console.log("Payment created:", {
-      id: result.id,
-      status: result.status,
-      status_detail: result.status_detail,
-    });
-
-    if (!result.point_of_interaction?.transaction_data) {
-      console.error("Invalid payment response - missing QR code data:", result);
-      throw new Error("Payment creation failed");
+    if (order.paymentId) {
+      return res.json(paymentResponse(await getPayment(order.paymentId)));
     }
-
-    const transactionData = result.point_of_interaction.transaction_data;
-    res.json({
-      qrCode: {
-        image: transactionData.qr_code_base64,
-        code: transactionData.qr_code,
+    const payload = {
+      transaction_amount: Number(order.total.toFixed(2)),
+      description: `Pedido #${order.id}`,
+      payment_method_id: "pix",
+      external_reference: order.id,
+      payer: {
+        email: order.user.email || `cliente.${order.id}@example.invalid`,
+        first_name: order.user.name.split(" ")[0],
+        last_name: order.user.name.split(" ").slice(1).join(" "),
       },
-      expiresIn: transactionData.qr_code_expiration_date,
-      paymentId: result.id,
-      status: result.status,
-    });
+      ...(process.env.MERCADO_PAGO_WEBHOOK_URL
+        ? { notification_url: process.env.MERCADO_PAGO_WEBHOOK_URL }
+        : {}),
+    };
+    const idempotencyKey = `pix-${createHash("sha256")
+      .update(order.id)
+      .digest("hex")}`;
+    const response = await axios.post(
+      "https://api.mercadopago.com/v1/payments",
+      payload,
+      { headers: mercadoPagoHeaders(idempotencyKey) }
+    );
+
+    const orders = readOrders();
+    order = orders.find((candidate) => candidate.id === orderId);
+    if (!order || !hasOrderAccess(order, orderAccessToken)) {
+      return res.status(409).json({ error: "Order changed while creating payment" });
+    }
+    order.paymentId = String(response.data.id);
+    if (!writeOrders(orders)) throw new Error("Failed to store payment ID");
+    return res.json(paymentResponse(response.data));
   } catch (error) {
-    console.error("Error creating PIX payment:", error);
-    console.error("Error details:", {
-      message: error.message,
-      name: error.name,
-      stack: error.stack,
-      response: error.response?.data,
-    });
-    res.status(500).json({
-      error: "Failed to create PIX payment",
-      details: error.message,
-      apiError: error.response?.data,
-    });
+    console.error("Failed to create PIX payment", error.message);
+    return res.status(502).json({ error: "Failed to create PIX payment" });
   }
 });
 
-app.get("/api/payments/:transactionId/status", async (req, res) => {
-  const { transactionId } = req.params;
-
+app.get("/api/payments/:paymentId/status", async (req, res) => {
+  const order = readOrders().find(
+    (candidate) => String(candidate.paymentId) === req.params.paymentId
+  );
+  if (!order || !hasOrderAccess(order, req.get("X-Order-Token"))) {
+    return res.status(404).json({ error: "Payment not found" });
+  }
   try {
-    const response = await payment.get(transactionId);
-    const body = response?.response || response?.body || response;
-    res.json({
-      status: body?.status,
-      statusDetail: body?.status_detail,
-      paid: body?.status === "approved",
+    const payment = await getPayment(req.params.paymentId);
+    return res.json({
+      status: payment.status,
+      statusDetail: payment.status_detail,
+      paid: payment.status === "approved",
     });
   } catch (error) {
-    console.error("Error checking payment status:", error);
-    res.status(500).json({ error: "Failed to check payment status" });
+    console.error("Failed to fetch payment status", error.message);
+    return res.status(502).json({ error: "Failed to fetch payment status" });
   }
 });
 
-// Webhook for Mercado Pago payment notifications
 app.post("/api/payments/webhook", async (req, res) => {
-  console.log("Received webhook notification:", JSON.stringify(req.body, null, 2));
-
-  const paymentId = req.body.data?.id || req.body.id || req.query.id;
-  const topic = req.body.type || req.body.topic || req.query.topic;
-
-  if (!paymentId || (topic && topic !== "payment" && topic !== "payment.created" && topic !== "payment.updated")) {
-    return res.status(200).send("OK (ignored non-payment or empty topic)");
+  const paymentId = req.body?.data?.id || req.body?.id || req.query.id;
+  const topic = req.body?.type || req.body?.topic || req.query.topic;
+  if (
+    !paymentId ||
+    (topic && !new Set(["payment", "payment.created", "payment.updated"]).has(topic))
+  ) {
+    return res.status(200).send("OK");
   }
-
   try {
-    console.log(`Fetching payment status for ID: ${paymentId}`);
-    let paymentInfo;
-    try {
-      if (payment && typeof payment.get === "function") {
-        paymentInfo = await payment.get({ id: paymentId });
-        paymentInfo = paymentInfo?.response || paymentInfo;
-      } else {
-        paymentInfo = await getPaymentDirect(paymentId);
-      }
-    } catch (getErr) {
-      console.error(`Failed to fetch payment info for ${paymentId} from Mercado Pago:`, getErr.message);
-      return res.status(200).send("OK (could not verify, but acknowledged webhook)");
+    const payment = await getPayment(paymentId);
+    if (payment.status !== "approved" || !payment.external_reference) {
+      return res.status(200).send("OK");
     }
-
-    console.log(`Payment info status: ${paymentInfo?.status}, external_reference: ${paymentInfo?.external_reference}`);
-
-    const externalRef = paymentInfo?.external_reference;
-    if (externalRef && paymentInfo?.status === "approved") {
-      const orders = readOrders();
-      const orderIndex = orders.findIndex((o) => o.id === externalRef);
-
-      if (orderIndex !== -1) {
-        if (orders[orderIndex].status === "PENDING") {
-          orders[orderIndex].status = "ACCEPTED";
-          writeOrders(orders);
-          console.log(`Order ${externalRef} successfully approved via Webhook.`);
-        } else {
-          console.log(`Order ${externalRef} is already in status: ${orders[orderIndex].status}`);
-        }
-      } else {
-        console.warn(`Order with external_reference ${externalRef} not found in database.`);
-      }
+    const orders = readOrders();
+    const order = orders.find(
+      (candidate) => candidate.id === payment.external_reference
+    );
+    if (!order) return res.status(200).send("OK");
+    const amountMatches =
+      Math.round(Number(payment.transaction_amount) * 100) ===
+      Math.round(Number(order.total) * 100);
+    const paymentMatches =
+      !order.paymentId || String(order.paymentId) === String(payment.id);
+    if (!amountMatches || !paymentMatches) {
+      console.warn("Rejected payment update with mismatched order data", {
+        orderId: order.id,
+        paymentId: String(payment.id),
+      });
+      return res.status(200).send("OK");
     }
-
-    res.status(200).send("OK");
+    order.paymentId = String(payment.id);
+    if (order.status === "PENDING") order.status = "ACCEPTED";
+    if (!writeOrders(orders)) throw new Error("Failed to update order");
+    return res.status(200).send("OK");
   } catch (error) {
-    console.error("Error processing webhook:", error);
-    res.status(500).json({ error: "Internal processing error" });
+    console.error("Failed to process payment webhook", error.message);
+    return res.status(502).json({ error: "Failed to verify payment" });
   }
 });
 
-// Initialize data and start server
-initializeDataFiles();
+app.get("/api/health", (_req, res) =>
+  res.json({ status: "OK", timestamp: new Date().toISOString() })
+);
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error("Unhandled error:", err);
-  res.status(500).json({
-    error: "Internal server error",
-    message: err.message,
-    stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
-  });
+ensureDataFiles();
+app.use((err, _req, res, _next) => {
+  console.error("Unhandled request error", err.message);
+  res.status(500).json({ error: "Internal server error" });
 });
 
-// Start server with error handling
-
-const server = app
-  .listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-    console.log(`API available at http://localhost:${PORT}/api`);
-  })
-  .on("error", (err) => {
-    if (err.code === "EADDRINUSE") {
-      console.error(
-        `Port ${PORT} is already in use. Please try another port or kill the process using this port.`
-      );
-    } else {
-      console.error("Failed to start server:", err);
-    }
-    process.exit(1);
-  });
-
-// Handle graceful shutdown
+const server = app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
+server.on("error", (error) => {
+  console.error("Failed to start server", error.message);
+  process.exit(1);
+});
 process.on("SIGTERM", () => {
-  console.info("SIGTERM signal received. Closing server...");
-  server.close(() => {
-    console.log("Server closed");
-    process.exit(0);
-  });
+  server.close(() => process.exit(0));
 });
-
-

@@ -97,4 +97,5 @@ export interface Order {
   paymentMethod: PaymentMethod;
   createdAt: Date;
   observations?: string; // Observações do cliente
+  accessToken?: string; // Retornado apenas na criação para operações do pedido
 }

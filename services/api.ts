@@ -2,6 +2,9 @@ import { Order, OrderStatus, MenuItem } from "../types";
 
 export const API_BASE_URL = import.meta.env.VITE_API_URL || "https://elsaborcompix.onrender.com/api";
 
+const adminRequest = (input: RequestInfo | URL, init: RequestInit = {}) =>
+  fetch(input, { ...init, credentials: "include" });
+
 // Helper function to handle API responses
 const handleApiResponse = async (response: Response) => {
   if (!response.ok) {
@@ -30,7 +33,7 @@ export const createMenuItem = async (
   menuItem: Omit<MenuItem, "id">
 ): Promise<MenuItem> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/menu`, {
+    const response = await adminRequest(`${API_BASE_URL}/menu`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -49,7 +52,7 @@ export const updateMenuItem = async (
   menuItem: Partial<MenuItem>
 ): Promise<MenuItem> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/menu/${id}`, {
+    const response = await adminRequest(`${API_BASE_URL}/menu/${id}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -65,7 +68,7 @@ export const updateMenuItem = async (
 
 export const deleteMenuItem = async (id: number): Promise<void> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/menu/${id}`, {
+    const response = await adminRequest(`${API_BASE_URL}/menu/${id}`, {
       method: "DELETE",
     });
     if (!response.ok) {
@@ -108,7 +111,7 @@ export const submitOrder = async (
 
 export const fetchOrders = async (): Promise<Order[]> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/orders`);
+    const response = await adminRequest(`${API_BASE_URL}/orders`);
     const orders = await handleApiResponse(response);
     // Convert createdAt strings back to Date objects
     return orders
@@ -130,7 +133,7 @@ export const updateOrderStatus = async (
   status: OrderStatus
 ): Promise<Order> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/orders/${orderId}/status`, {
+    const response = await adminRequest(`${API_BASE_URL}/orders/${orderId}/status`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -147,4 +150,22 @@ export const updateOrderStatus = async (
     console.error("Failed to update order status:", error);
     throw error;
   }
+};
+
+export const loginAdmin = async (password: string): Promise<void> => {
+  const response = await adminRequest(`${API_BASE_URL}/admin/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ password }),
+  });
+  if (!response.ok) throw new Error("Invalid credentials");
+};
+
+export const checkAdminSession = async (): Promise<boolean> => {
+  const response = await adminRequest(`${API_BASE_URL}/admin/session`);
+  return response.ok;
+};
+
+export const logoutAdmin = async (): Promise<void> => {
+  await adminRequest(`${API_BASE_URL}/admin/logout`, { method: "POST" });
 };

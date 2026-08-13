@@ -1,21 +1,25 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-
-const ADMIN_PASSWORD = 'admin'; // In a real app, this would be handled securely on a backend
+import { loginAdmin } from '../services/api';
 
 const AdminLoginPage: React.FC = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password === ADMIN_PASSWORD) {
-      sessionStorage.setItem('isAdminAuthenticated', 'true');
+    setError('');
+    setIsLoading(true);
+    try {
+      await loginAdmin(password);
       navigate('/admin/dashboard');
-    } else {
+    } catch {
       setError('Senha incorreta.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -38,9 +42,10 @@ const AdminLoginPage: React.FC = () => {
           {error && <p className="text-sm text-center text-red-500">{error}</p>}
           <button
             type="submit"
+            disabled={isLoading}
             className="w-full py-3 font-bold text-white bg-orange-600 rounded-md hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
           >
-            Entrar
+            {isLoading ? 'Entrando...' : 'Entrar'}
           </button>
         </form>
       </div>

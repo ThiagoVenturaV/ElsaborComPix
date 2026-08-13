@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 // FIX: `useReactToPrint` is a named export, not a default export.
 import { useReactToPrint } from 'react-to-print';
 import { Order, OrderStatus, translateDeliveryType, translateOrderStatus } from '../types';
-import { fetchOrders, updateOrderStatus } from '../services/api';
+import { checkAdminSession, fetchOrders, updateOrderStatus } from '../services/api';
 import OrderTicket from '../components/OrderTicket';
 import MenuManagement from '../components/MenuManagement';
 import { CheckCircleIcon, XCircleIcon, MotorcycleIcon, MenuIcon } from '../components/icons';
@@ -75,22 +75,27 @@ const AdminDashboardPage: React.FC = () => {
   }, [lastOrderCount]);
 
   useEffect(() => {
-    const isAuthenticated = sessionStorage.getItem('isAdminAuthenticated');
-    if (!isAuthenticated) {
-      navigate('/admin');
-    } else {
-      loadOrders();
-      
+    let interval: ReturnType<typeof setInterval> | undefined;
+    let cancelled = false;
+    const initialize = async () => {
+      if (!(await checkAdminSession())) {
+        navigate('/admin');
+        return;
+      }
+      if (cancelled) return;
+      await loadOrders();
       if (autoRefreshEnabled) {
-        // Solicita permissão para notificações
         if ('Notification' in window && Notification.permission === 'default') {
           Notification.requestPermission();
         }
-        
-        const interval = setInterval(loadOrders, 5000); // Refresh every 5 seconds
-        return () => clearInterval(interval);
+        interval = setInterval(loadOrders, 5000);
       }
-    }
+    };
+    initialize();
+    return () => {
+      cancelled = true;
+      if (interval) clearInterval(interval);
+    };
   }, [navigate, loadOrders, autoRefreshEnabled]);
 
   useEffect(() => {

@@ -9,8 +9,6 @@
     "resolveJsonModule": true,
   },
   "include": [
-    "services/orders.ts",
-    "services/payment.ts",
     "types.ts"
   ],
   "exclude": ["node_modules"]
