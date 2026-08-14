@@ -51,14 +51,10 @@ const CheckoutPage: React.FC = () => {
   const [pixData, setPixData] = useState<any>(null);
   const [paymentStatus, setPaymentStatus] = useState<any>(null);
 
-  const generatePixPayment = async (orderId: string) => {
+  const generatePixPayment = async (orderId: string, orderAccessToken: string) => {
     setIsLoadingPix(true);
     try {
-      // Create payment with customer info
-      const data = await createPixPayment(orderId, {
-        name: name.trim(),
-        phone: phone,
-      });
+      const data = await createPixPayment(orderId, orderAccessToken);
       setPixData(data);
       setPaymentStatus({ paid: false });
     } catch (error) {
@@ -71,13 +67,14 @@ const CheckoutPage: React.FC = () => {
 
   const checkPixPaymentStatus = React.useCallback(async (showAlertOnError = false) => {
     const pId = pixData?.paymentId || pixData?.transactionId;
-    if (!pId) return;
+    const orderAccessToken = confirmedOrder?.accessToken;
+    if (!pId || !orderAccessToken) return;
 
     if (showAlertOnError) {
       setIsLoadingPix(true);
     }
     try {
-      const status = await checkPaymentStatus(pId);
+      const status = await checkPaymentStatus(pId, orderAccessToken);
       setPaymentStatus(status);
 
       if (status.paid) {
@@ -94,7 +91,7 @@ const CheckoutPage: React.FC = () => {
         setIsLoadingPix(false);
       }
     }
-  }, [pixData, clearCart]);
+  }, [pixData, confirmedOrder?.accessToken, clearCart]);
 
   useEffect(() => {
     const pId = pixData?.paymentId || pixData?.transactionId;
@@ -194,7 +191,8 @@ const CheckoutPage: React.FC = () => {
       setConfirmedOrder(newOrder);
 
       if (paymentMethod === PaymentMethod.PIX) {
-        await generatePixPayment(newOrder.id);
+        if (!newOrder.accessToken) throw new Error("Missing order access token");
+        await generatePixPayment(newOrder.id, newOrder.accessToken);
       } else {
         clearCart();
         setStep("CONFIRMATION");

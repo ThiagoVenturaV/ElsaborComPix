@@ -250,3 +250,20 @@ O sistema migrou do localStorage para um backend real:
 ## 📄 Licença
 
 Este projeto está sob a licença MIT. Veja o arquivo `LICENSE` para mais detalhes.
+
+## Configuração de segurança obrigatória
+
+O backend falha na inicialização quando `MERCADO_PAGO_ACCESS_TOKEN`,
+`ADMIN_PASSWORD_HASH` ou `ADMIN_SESSION_SECRET` não estão configurados. Copie
+`.env.example` para `.env` apenas no ambiente local e nunca versione o arquivo
+resultante.
+
+`ADMIN_PASSWORD_HASH` deve ter o formato `scrypt:<salt-hex>:<hash-hex>`. Gere o
+salt com pelo menos 16 bytes aleatórios e derive um hash de pelo menos 32 bytes
+com scrypt. `ADMIN_SESSION_SECRET` deve ser aleatório e ter no mínimo 32
+caracteres. Configure `ALLOWED_ORIGINS` com as origens HTTPS reais do frontend,
+separadas por vírgula.
+
+Após aplicar esta atualização em um ambiente que já esteve publicado, rotacione
+qualquer chave Gemini que tenha sido incluída no bundle e o token do Mercado
+Pago caso seus prefixos ou respostas tenham aparecido em logs.
